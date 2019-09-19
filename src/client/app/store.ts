@@ -28,7 +28,7 @@ const defaultSettings = {
 	memo: null,
 	iLikeSushi: false,
 	rememberNoteVisibility: false,
-	defaultNoteVisibility: 'public',
+	defaultNoteVisibility: 'local-public',
 	wallpaper: null,
 	webSearchEngine: 'https://www.google.com/?#q={{query}}',
 	mutedWords: [],
