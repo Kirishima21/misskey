@@ -108,16 +108,12 @@ Please see the [Contribution Guide](./CONTRIBUTING.md).
 <td><img src="https://c10.patreonusercontent.com/3/eyJ3IjoyMDB9/patreon-media/p/user/12190916/fb7fa7983c14425f890369535b1506a4/3.png?token-time=2145916800&token-hash=oH_i7gJjNT7Ot6j9JiVwy7ZJIBqACVnzLqlz4YrDAZA%3D" alt="weepjp" width="100"></td>
 <td><img src="https://c10.patreonusercontent.com/3/eyJ3IjoyMDB9/patreon-media/p/user/19045173/cb91c0f345c24d4ebfd05f19906d5e26/1.png?token-time=2145916800&token-hash=o_zKBytJs_AxHwSYw_5R8eD0eSJe3RoTR3kR3Q0syN0%3D" alt="kiritan" width="100"></td>
 <td><img src="https://c8.patreon.com/2/200/776209" alt="Denshi" width="100"></td>
-<td><img src="https://c8.patreon.com/2/200/557245" alt="mkatze" width="100"></td>
-<td><img src="https://c10.patreonusercontent.com/3/eyJ3IjoyMDB9/patreon-media/p/user/12913507/f7181eacafe8469a93033d85f5969c29/4.jpe?token-time=2145916800&token-hash=zEyJqVM7u9d8Ri-65fJYSJcWF1jBH1nJ5a3taRzrTmw%3D" alt="Melilot" width="100"></td>
 </tr><tr>
 <td><a href="https://www.patreon.com/rane_hs">Hiroshi Seki</a></td>
 <td><a href="https://www.patreon.com/user?u=20010324">Nemo</a></td>
 <td><a href="https://www.patreon.com/weepjp">weepjp</a></td>
 <td><a href="https://www.patreon.com/user?u=19045173">kiritan</a></td>
 <td><a href="https://www.patreon.com/user?u=776209">Denshi</a></td>
-<td><a href="https://www.patreon.com/user?u=557245">mkatze</a></td>
-<td><a href="https://www.patreon.com/user?u=12913507">Melilot</a></td>
 </tr></table>
 <table><tr>
 <td><img src="https://c10.patreonusercontent.com/3/eyJ3IjoyMDB9/patreon-media/p/user/5670915/ee175f0bfb6347ffa4ea101a8c097bff/1.jpg?token-time=2145916800&token-hash=mPLM9CA-riFHx-myr3bLZJuH2xBRHA9se5VbHhLIOuA%3D" alt="osapon" width="100"></td>
@@ -125,6 +121,7 @@ Please see the [Contribution Guide](./CONTRIBUTING.md).
 <td><img src="https://c10.patreonusercontent.com/3/eyJ3IjoyMDB9/patreon-media/p/user/18899730/6a22797f68254034a854d69ea2445fc8/1.png?token-time=2145916800&token-hash=b_uj57yxo5VzkSOUS7oXE_762dyOTB_oxzbO6lFNG3k%3D" alt="YuzuRyo61" width="100"></td>
 <td><img src="https://c10.patreonusercontent.com/3/eyJ3IjoyMDB9/patreon-media/p/user/5788159/af42076ab3354bb49803cfba65f94bee/1.jpg?token-time=2145916800&token-hash=iSaxp_Yr2-ZiU2YVi9rcpZZj9mj3UvNSMrZr4CU4qtA%3D" alt="mewl hayabusa" width="100"></td>
 <td><img src="https://c10.patreonusercontent.com/3/eyJ3IjoyMDB9/patreon-media/p/user/11357794/923ce94cd8c44ba788ee931907881839/1.png?token-time=2145916800&token-hash=9nEQje_eMvUjq9a7L3uBqW-MQbS-rRMaMgd7UYVoFNM%3D" alt="mydarkstar" width="100"></td>
+<td><img src="https://c8.patreon.com/2/200/16542964" alt="Takumi Sugita" width="100"></td>
 <td><img src="https://c8.patreon.com/2/200/17866454" alt="sikyosyounin" width="100"></td>
 <td><img src="https://c10.patreonusercontent.com/3/eyJ3IjoyMDB9/patreon-media/p/user/5881381/6235ca5d3fb04c8e95ef5b4ff2abcc18/3.png?token-time=2145916800&token-hash=KjfQL8nf3AIf6WqzLshBYAyX44piAqOAZiYXgZS_H6A%3D" alt="YUKIMOCHI" width="100"></td>
 </tr><tr>
@@ -133,6 +130,7 @@ Please see the [Contribution Guide](./CONTRIBUTING.md).
 <td><a href="https://www.patreon.com/Yuzulia">YuzuRyo61</a></td>
 <td><a href="https://www.patreon.com/hs_sh_net">mewl hayabusa</a></td>
 <td><a href="https://www.patreon.com/mydarkstar">mydarkstar</a></td>
+<td><a href="https://www.patreon.com/user?u=16542964">Takumi Sugita</a></td>
 <td><a href="https://www.patreon.com/user?u=17866454">sikyosyounin</a></td>
 <td><a href="https://www.patreon.com/yukimochi">YUKIMOCHI</a></td>
 </tr></table>
@@ -171,7 +169,7 @@ Please see the [Contribution Guide](./CONTRIBUTING.md).
 <td><a href="https://www.patreon.com/user?u=12531784">Takashi Shibuya</a></td>
 </tr></table>
 
-**Last updated:** Sat, 07 Sep 2019 13:23:36 UTC
+**Last updated:** Thu, 03 Oct 2019 14:45:07 UTC
 <!-- PATREON_END -->
 
 :four_leaf_clover: Copyright
