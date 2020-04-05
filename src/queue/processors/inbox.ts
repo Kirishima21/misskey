@@ -3,7 +3,6 @@ import * as httpSignature from 'http-signature';
 import { IRemoteUser } from '../../models/entities/user';
 import perform from '../../remote/activitypub/perform';
 import { resolvePerson, updatePerson } from '../../remote/activitypub/models/person';
-import { publishApLogStream } from '../../services/stream';
 import Logger from '../../services/logger';
 import { registerOrFetchInstanceDoc } from '../../services/register-or-fetch-instance-doc';
 import { Instances, Users, UserPublickeys } from '../../models';
@@ -13,6 +12,7 @@ import { fetchMeta } from '../../misc/fetch-meta';
 import { toPuny } from '../../misc/convert-host';
 import { validActor } from '../../remote/activitypub/type';
 import { ensure } from '../../prelude/ensure';
+import { fetchNodeinfo } from '../../services/fetch-nodeinfo';
 
 const logger = new Logger('inbox');
 
@@ -88,15 +88,6 @@ export default async (job: Bull.Job): Promise<void> => {
 		return;
 	}
 
-	//#region Log
-	publishApLogStream({
-		direction: 'in',
-		activity: activity.type,
-		host: user.host,
-		actor: user.username
-	});
-	//#endregion
-
 	// Update stats
 	registerOrFetchInstanceDoc(user.host).then(i => {
 		Instances.update(i.id, {
@@ -104,6 +95,8 @@ export default async (job: Bull.Job): Promise<void> => {
 			lastCommunicatedAt: new Date(),
 			isNotResponding: false
 		});
+
+		fetchNodeinfo(i);
 
 		instanceChart.requestReceived(i.host);
 	});

@@ -1,12 +1,13 @@
 import { EntityRepository, Repository, In } from 'typeorm';
 import { Note } from '../entities/note';
 import { User } from '../entities/user';
-import { unique, concat } from '../../prelude/array';
-import { nyaize } from '../../misc/nyaize';
-import { Emojis, Users, Apps, PollVotes, DriveFiles, NoteReactions, Followings, Polls } from '..';
+import { Emojis, Users, PollVotes, DriveFiles, NoteReactions, Followings, Polls } from '..';
 import { ensure } from '../../prelude/ensure';
 import { SchemaType } from '../../misc/schema';
 import { awaitAll } from '../../prelude/await-all';
+import { convertLegacyReaction, convertLegacyReactions } from '../../misc/reaction-lib';
+import { toString } from '../../mfm/toString';
+import { parse } from '../../mfm/parse';
 
 export type PackedNote = SchemaType<typeof packedNoteSchema>;
 
@@ -71,7 +72,6 @@ export class NoteRepository extends Repository<Note> {
 			packedNote.text = null;
 			packedNote.poll = undefined;
 			packedNote.cw = null;
-			packedNote.geo = undefined;
 			packedNote.isHidden = true;
 		}
 	}
@@ -129,6 +129,33 @@ export class NoteRepository extends Repository<Note> {
 			};
 		}
 
+		async function populateEmojis(emojiNames: string[], noteUserHost: string | null, reactionNames: string[]) {
+			const where = [] as {}[];
+
+			if (emojiNames?.length > 0) {
+				where.push({
+					name: In(emojiNames),
+					host: noteUserHost
+				});
+			}
+
+			reactionNames = reactionNames?.filter(x => x.match(/^:[^:]+:$/)).map(x => x.replace(/:/g, ''));
+
+			if (reactionNames?.length > 0) {
+				where.push({
+					name: In(reactionNames),
+					host: null
+				});
+			}
+
+			if (where.length === 0) return [];
+
+			return Emojis.find({
+				where,
+				select: ['name', 'host', 'url', 'aliases']
+			});
+		}
+
 		async function populateMyReaction() {
 			const reaction = await NoteReactions.findOne({
 				userId: meId!,
@@ -136,7 +163,7 @@ export class NoteRepository extends Repository<Note> {
 			});
 
 			if (reaction) {
-				return reaction.reaction;
+				return convertLegacyReaction(reaction.reaction);
 			}
 
 			return undefined;
@@ -148,12 +175,9 @@ export class NoteRepository extends Repository<Note> {
 			text = `【${note.name}】\n${(note.text || '').trim()}\n${note.uri}`;
 		}
 
-		const reactionEmojis = unique(concat([note.emojis, Object.keys(note.reactions)]));
-
 		const packed = await awaitAll({
 			id: note.id,
 			createdAt: note.createdAt.toISOString(),
-			app: note.appId ? Apps.pack(note.appId) : undefined,
 			userId: note.userId,
 			user: Users.pack(note.user || note.userId, meId),
 			text: text,
@@ -164,18 +188,17 @@ export class NoteRepository extends Repository<Note> {
 			viaMobile: note.viaMobile || undefined,
 			renoteCount: note.renoteCount,
 			repliesCount: note.repliesCount,
-			reactions: note.reactions,
+			reactions: convertLegacyReactions(note.reactions),
 			tags: note.tags.length > 0 ? note.tags : undefined,
-			emojis: reactionEmojis.length > 0 ? Emojis.find({
-				name: In(reactionEmojis),
-				host: host
-			}) : [],
+			emojis: populateEmojis(note.emojis, host, Object.keys(note.reactions)),
 			fileIds: note.fileIds,
 			files: DriveFiles.packMany(note.fileIds),
 			replyId: note.replyId,
 			renoteId: note.renoteId,
 			mentions: note.mentions.length > 0 ? note.mentions : undefined,
 			uri: note.uri || undefined,
+			_featuredId_: (note as any)._featuredId_ || undefined,
+			_prId_: (note as any)._prId_ || undefined,
 
 			...(opts.detail ? {
 				reply: note.replyId ? this.pack(note.replyId, meId, {
@@ -195,7 +218,8 @@ export class NoteRepository extends Repository<Note> {
 		});
 
 		if (packed.user.isCat && packed.text) {
-			packed.text = nyaize(packed.text);
+			const tokens = packed.text ? parse(packed.text) : [];
+			packed.text = toString(tokens, { doNyaize: true });
 		}
 
 		if (!opts.skipHide) {
@@ -334,9 +358,6 @@ export const packedNoteSchema = {
 			type: 'object' as const,
 			optional: true as const, nullable: true as const,
 		},
-		geo: {
-			type: 'object' as const,
-			optional: true as const, nullable: true as const,
-		},
+
 	},
 };

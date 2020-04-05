@@ -79,6 +79,8 @@ redis:
   host: localhost
   port: 6379
   #pass: example-pass
+  #prefix: example-prefix
+  #db: 1
 
 #   ┌─────────────────────────────┐
 #───┘ Elasticsearch configuration └─────────────────────────────
@@ -86,7 +88,9 @@ redis:
 #elasticsearch:
 #  host: localhost
 #  port: 9200
-#  pass: null
+#  ssl: false
+#  user: 
+#  pass: 
 
 #   ┌───────────────┐
 #───┘ ID generation └───────────────────────────────────────────
@@ -109,10 +113,6 @@ id: 'aid'
 #   ┌─────────────────────┐
 #───┘ Other configuration └─────────────────────────────────────
 
-# If enabled:
-#  The first account created is automatically marked as Admin.
-autoAdmin: true
-
 # Whether disable HSTS
 #disableHsts: true
 
@@ -120,8 +120,16 @@ autoAdmin: true
 #clusterLimit: 1
 
 # Job concurrency per worker
-# deliverJobConcurrency: 128;
-# inboxJobConcurrency: 16;
+# deliverJobConcurrency: 128
+# inboxJobConcurrency: 16
+
+# Job rate limiter
+# deliverJobPerSec: 128
+# inboxJobPerSec: 16
+
+# Job attempts
+# deliverJobMaxAttempts: 12
+# inboxJobMaxAttempts: 8
 
 # IP address family used for outgoing request (ipv4, ipv6 or dual)
 #outgoingAddressFamily: ipv4
@@ -138,3 +146,6 @@ autoAdmin: true
 #proxySmtp: http://127.0.0.1:3128   # use HTTP/1.1 CONNECT
 #proxySmtp: socks4://127.0.0.1:1080 # use SOCKS4
 #proxySmtp: socks5://127.0.0.1:1080 # use SOCKS5
+
+# Media Proxy
+#mediaProxy: https://example.com/proxy

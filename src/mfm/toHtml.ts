@@ -87,7 +87,7 @@ export function toHtml(tokens: MfmForest | null, mentionedRemoteUsers: IMentione
 		},
 
 		emoji(token) {
-			return doc.createTextNode(token.node.props.emoji ? token.node.props.emoji : `:${token.node.props.name}:`);
+			return doc.createTextNode(token.node.props.emoji ? token.node.props.emoji : `\u200B:${token.node.props.name}:\u200B`);
 		},
 
 		hashtag(token) {
@@ -135,8 +135,8 @@ export function toHtml(tokens: MfmForest | null, mentionedRemoteUsers: IMentione
 					break;
 				default:
 					const remoteUserInfo = mentionedRemoteUsers.find(remoteUser => remoteUser.username === username && remoteUser.host === host);
-					a.href = remoteUserInfo ? remoteUserInfo.uri : `${config.url}/${acct}`;
-					a.className = 'mention';
+					a.href = remoteUserInfo ? (remoteUserInfo.url ? remoteUserInfo.url : remoteUserInfo.uri) : `${config.url}/${acct}`;
+					a.className = 'u-url mention';
 					break;
 			}
 			a.textContent = acct;

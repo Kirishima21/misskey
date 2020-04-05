@@ -11,8 +11,9 @@ import processDb from './processors/db';
 import procesObjectStorage from './processors/object-storage';
 import { queueLogger } from './logger';
 import { DriveFile } from '../models/entities/drive-file';
+import { getJobInfo } from './get-job-info';
 
-function initializeQueue(name: string) {
+function initializeQueue(name: string, limitPerSec = -1) {
 	return new Queue(name, {
 		redis: {
 			port: config.redis.port,
@@ -20,20 +21,24 @@ function initializeQueue(name: string) {
 			password: config.redis.pass,
 			db: config.redis.db || 0,
 		},
-		prefix: config.redis.prefix ? `${config.redis.prefix}:queue` : 'queue'
+		prefix: config.redis.prefix ? `${config.redis.prefix}:queue` : 'queue',
+		limiter: limitPerSec > 0 ? {
+			max: limitPerSec * 5,
+			duration: 5000
+		} : undefined
 	});
 }
 
 function renderError(e: Error): any {
 	return {
-		stack: e.stack,
-		message: e.message,
-		name: e.name
+		stack: e?.stack,
+		message: e?.message,
+		name: e?.name
 	};
 }
 
-export const deliverQueue = initializeQueue('deliver');
-export const inboxQueue = initializeQueue('inbox');
+export const deliverQueue = initializeQueue('deliver', config.deliverJobPerSec || 128);
+export const inboxQueue = initializeQueue('inbox', config.inboxJobPerSec || 16);
 export const dbQueue = initializeQueue('db');
 export const objectStorageQueue = initializeQueue('objectStorage');
 
@@ -44,19 +49,19 @@ const objectStorageLogger = queueLogger.createSubLogger('objectStorage');
 
 deliverQueue
 	.on('waiting', (jobId) => deliverLogger.debug(`waiting id=${jobId}`))
-	.on('active', (job) => deliverLogger.debug(`active id=${job.id} to=${job.data.to}`))
-	.on('completed', (job, result) => deliverLogger.debug(`completed(${result}) id=${job.id} to=${job.data.to}`))
-	.on('failed', (job, err) => deliverLogger.warn(`failed(${err}) id=${job.id} to=${job.data.to}`, { job, e: renderError(err) }))
+	.on('active', (job) => deliverLogger.debug(`active ${getJobInfo(job, true)} to=${job.data.to}`))
+	.on('completed', (job, result) => deliverLogger.debug(`completed(${result}) ${getJobInfo(job, true)} to=${job.data.to}`))
+	.on('failed', (job, err) => deliverLogger.warn(`failed(${err}) ${getJobInfo(job)} to=${job.data.to}`))
 	.on('error', (job: any, err: Error) => deliverLogger.error(`error ${err}`, { job, e: renderError(err) }))
-	.on('stalled', (job) => deliverLogger.warn(`stalled id=${job.id} to=${job.data.to}`));
+	.on('stalled', (job) => deliverLogger.warn(`stalled ${getJobInfo(job)} to=${job.data.to}`));
 
 inboxQueue
 	.on('waiting', (jobId) => inboxLogger.debug(`waiting id=${jobId}`))
-	.on('active', (job) => inboxLogger.debug(`active id=${job.id}`))
-	.on('completed', (job, result) => inboxLogger.debug(`completed(${result}) id=${job.id}`))
-	.on('failed', (job, err) => inboxLogger.warn(`failed(${err}) id=${job.id} activity=${job.data.activity ? job.data.activity.id : 'none'}`, { job, e: renderError(err) }))
+	.on('active', (job) => inboxLogger.debug(`active ${getJobInfo(job, true)}`))
+	.on('completed', (job, result) => inboxLogger.debug(`completed(${result}) ${getJobInfo(job, true)}`))
+	.on('failed', (job, err) => inboxLogger.warn(`failed(${err}) ${getJobInfo(job)} activity=${job.data.activity ? job.data.activity.id : 'none'}`, { job, e: renderError(err) }))
 	.on('error', (job: any, err: Error) => inboxLogger.error(`error ${err}`, { job, e: renderError(err) }))
-	.on('stalled', (job) => inboxLogger.warn(`stalled id=${job.id} activity=${job.data.activity ? job.data.activity.id : 'none'}`));
+	.on('stalled', (job) => inboxLogger.warn(`stalled ${getJobInfo(job)} activity=${job.data.activity ? job.data.activity.id : 'none'}`));
 
 dbQueue
 	.on('waiting', (jobId) => dbLogger.debug(`waiting id=${jobId}`))
@@ -84,7 +89,7 @@ export function deliver(user: ILocalUser, content: any, to: any) {
 	};
 
 	return deliverQueue.add(data, {
-		attempts: 8,
+		attempts: config.deliverJobMaxAttempts || 12,
 		backoff: {
 			type: 'exponential',
 			delay: 60 * 1000
@@ -101,10 +106,10 @@ export function inbox(activity: any, signature: httpSignature.IParsedSignature) 
 	};
 
 	return inboxQueue.add(data, {
-		attempts: 8,
+		attempts: config.inboxJobMaxAttempts || 8,
 		backoff: {
 			type: 'exponential',
-			delay: 1000
+			delay: 60 * 1000
 		},
 		removeOnComplete: true,
 		removeOnFail: true

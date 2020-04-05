@@ -23,7 +23,7 @@ export const meta = {
 
 	tags: ['account'],
 
-	requireCredential: true,
+	requireCredential: true as const,
 
 	kind: 'write:account',
 
@@ -126,6 +126,10 @@ export const meta = {
 			}
 		},
 
+		injectFeaturedNote: {
+			validator: $.optional.bool,
+		},
+
 		alwaysMarkNsfw: {
 			validator: $.optional.bool,
 			desc: {
@@ -174,8 +178,8 @@ export const meta = {
 	}
 };
 
-export default define(meta, async (ps, user, app) => {
-	const isSecure = user != null && app == null;
+export default define(meta, async (ps, user, token) => {
+	const isSecure = token == null;
 
 	const updates = {} as Partial<User>;
 	const profileUpdates = {} as Partial<UserProfile>;
@@ -195,6 +199,7 @@ export default define(meta, async (ps, user, app) => {
 	if (typeof ps.autoAcceptFollowed == 'boolean') profileUpdates.autoAcceptFollowed = ps.autoAcceptFollowed;
 	if (typeof ps.isCat == 'boolean') updates.isCat = ps.isCat;
 	if (typeof ps.autoWatch == 'boolean') profileUpdates.autoWatch = ps.autoWatch;
+	if (typeof ps.injectFeaturedNote == 'boolean') profileUpdates.injectFeaturedNote = ps.injectFeaturedNote;
 	if (typeof ps.alwaysMarkNsfw == 'boolean') profileUpdates.alwaysMarkNsfw = ps.alwaysMarkNsfw;
 
 	if (ps.avatarId) {
@@ -268,7 +273,7 @@ export default define(meta, async (ps, user, app) => {
 	//#endregion
 
 	if (Object.keys(updates).length > 0) await Users.update(user.id, updates);
-	if (Object.keys(profileUpdates).length > 0) await UserProfiles.update({ userId: user.id }, profileUpdates);
+	if (Object.keys(profileUpdates).length > 0) await UserProfiles.update(user.id, profileUpdates);
 
 	const iObj = await Users.pack(user.id, user, {
 		detail: true,
