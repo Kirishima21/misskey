@@ -476,6 +476,10 @@ state: "状態"
 sort: "ソート"
 ascendingOrder: "昇順"
 descendingOrder: "降順"
+gacha: "顔文字ガチャ"
+gachaSettings: "顔文字ガチャの設定"
+gachaFaces: "顔文字"
+gachaSettingDescription: "顔文字ガチャで出現する顔文字を改行で区切って設定します。"
 
 _theme:
   explore: "テーマを探す"
