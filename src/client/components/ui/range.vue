@@ -1,7 +1,7 @@
 <template>
 <div class="timctyfi" :class="{ focused, disabled }">
 	<div class="icon"><slot name="icon"></slot></div>
-	<span class="title"><slot name="title"></slot></span>
+	<span class="label"><slot name="label"></slot></span>
 	<input
 		type="range"
 		ref="input"
@@ -13,14 +13,15 @@
 		:autofocus="autofocus"
 		@focus="focused = true"
 		@blur="focused = false"
-		@input="$emit('input', $event.target.value)"
+		@input="$emit('update:value', $event.target.value)"
 	/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-export default Vue.extend({
+import { defineComponent } from 'vue';
+
+export default defineComponent({
 	props: {
 		value: {
 			type: Number,
@@ -95,7 +96,7 @@ export default Vue.extend({
 		-webkit-appearance: none;
 		-moz-appearance: none;
 		appearance: none;
-		background: var(--xxubwiul);
+		background: var(--X10);
 		height: 7px;
 		margin: 0 8px;
 		outline: 0;

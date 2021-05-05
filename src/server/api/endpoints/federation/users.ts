@@ -1,11 +1,11 @@
 import $ from 'cafy';
-import { ID } from '../../../../misc/cafy-id';
+import { ID } from '@/misc/cafy-id';
 import define from '../../define';
 import { Users } from '../../../../models';
 import { makePaginationQuery } from '../../common/make-pagination-query';
 
 export const meta = {
-	tags: ['users'],
+	tags: ['federation'],
 
 	requireCredential: false as const,
 

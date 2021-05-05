@@ -1,542 +1,245 @@
 <template>
-<div v-if="meta" class="xhexznfu">
-	<portal to="icon"><fa :icon="faServer"/></portal>
-	<portal to="title">{{ $t('instance') }}</portal>
-
-	<mk-instance-stats style="margin-bottom: var(--margin);"/>
-
-	<section class="_card logs">
-		<div class="_title"><fa :icon="faStream"/> {{ $t('serverLogs') }}</div>
-		<div class="_content">
-			<div class="_inputs">
-				<mk-input v-model="logDomain" :debounce="true">
-					<span>{{ $t('domain') }}</span>
-				</mk-input>
-				<mk-select v-model="logLevel">
-					<template #label>{{ $t('level') }}</template>
-					<option value="all">{{ $t('levels.all') }}</option>
-					<option value="info">{{ $t('levels.info') }}</option>
-					<option value="success">{{ $t('levels.success') }}</option>
-					<option value="warning">{{ $t('levels.warning') }}</option>
-					<option value="error">{{ $t('levels.error') }}</option>
-					<option value="debug">{{ $t('levels.debug') }}</option>
-				</mk-select>
-			</div>
-
-			<div class="logs">
-				<code v-for="log in logs" :key="log.id" :class="log.level">
-					<details>
-						<summary><mk-time :time="log.createdAt"/> [{{ log.domain.join('.') }}] {{ log.message }}</summary>
-						<vue-json-pretty v-if="log.data" :data="log.data"></vue-json-pretty>
-					</details>
-				</code>
-			</div>
-		</div>
-		<div class="_footer">
-			<mk-button @click="deleteAllLogs()" primary><fa :icon="faTrashAlt"/> {{ $t('deleteAll') }}</mk-button>
-		</div>
-	</section>
-
-	<section class="_card chart">
-		<div class="_title"><fa :icon="faMicrochip"/> {{ $t('cpuAndMemory') }}</div>
-		<div class="_content" style="margin-top: -8px; margin-bottom: -12px;">
-			<canvas ref="cpumem"></canvas>
-		</div>
-		<div class="_content" v-if="serverInfo">
-			<div class="table">
-				<div class="row">
-					<div class="cell"><div class="label">CPU</div>{{ serverInfo.cpu.model }}</div>
+<div class="hiyeyicy" :class="{ wide: !narrow }" ref="el">
+	<div class="nav" v-if="!narrow || page == null">
+		<FormBase>
+			<FormGroup>
+				<div class="_formItem">
+					<div class="_formPanel lxpfedzu">
+						<img :src="$instance.iconUrl || '/favicon.ico'" alt="" class="icon"/>
+					</div>
 				</div>
-				<div class="row">
-					<div class="cell"><div class="label">MEM total</div>{{ serverInfo.mem.total | bytes }}</div>
-					<div class="cell"><div class="label">MEM used</div>{{ memUsage | bytes }} ({{ (memUsage / serverInfo.mem.total * 100).toFixed(0) }}%)</div>
-					<div class="cell"><div class="label">MEM free</div>{{ serverInfo.mem.total - memUsage | bytes }} ({{ ((serverInfo.mem.total - memUsage) / serverInfo.mem.total * 100).toFixed(0) }}%)</div>
-				</div>
-			</div>
-		</div>
-	</section>
-	<section class="_card chart">
-		<div class="_title"><fa :icon="faHdd"/> {{ $t('disk') }}</div>
-		<div class="_content" style="margin-top: -8px; margin-bottom: -12px;">
-			<canvas ref="disk"></canvas>
-		</div>
-		<div class="_content" v-if="serverInfo">
-			<div class="table">
-				<div class="row">
-					<div class="cell"><div class="label">Disk total</div>{{ serverInfo.fs.total | bytes }}</div>
-					<div class="cell"><div class="label">Disk used</div>{{ serverInfo.fs.used | bytes }} ({{ (serverInfo.fs.used / serverInfo.fs.total * 100).toFixed(0) }}%)</div>
-					<div class="cell"><div class="label">Disk free</div>{{ serverInfo.fs.total - serverInfo.fs.used | bytes }} ({{ ((serverInfo.fs.total - serverInfo.fs.used) / serverInfo.fs.total * 100).toFixed(0) }}%)</div>
-				</div>
-			</div>
-		</div>
-	</section>
-	<section class="_card chart">
-		<div class="_title"><fa :icon="faExchangeAlt"/> {{ $t('network') }}</div>
-		<div class="_content" style="margin-top: -8px; margin-bottom: -12px;">
-			<canvas ref="net"></canvas>
-		</div>
-		<div class="_content" v-if="serverInfo">
-			<div class="table">
-				<div class="row">
-					<div class="cell"><div class="label">Interface</div>{{ serverInfo.net.interface }}</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<section class="_card info">
-		<div class="_content table">
-			<div><b>Misskey</b><span>v{{ version }}</span></div>
-		</div>
-		<div class="_content table" v-if="serverInfo">
-			<div><b>Node.js</b><span>{{ serverInfo.node }}</span></div>
-			<div><b>PostgreSQL</b><span>v{{ serverInfo.psql }}</span></div>
-			<div><b>Redis</b><span>v{{ serverInfo.redis }}</span></div>
-		</div>
-	</section>
+				<FormLink :active="page === 'overview'" replace to="/instance/overview"><template #icon><i class="fas fa-tachometer-alt"></i></template>{{ $ts.overview }}</FormLink>
+			</FormGroup>
+			<FormGroup>
+				<template #label>{{ $ts.quickAction }}</template>
+				<FormButton @click="lookup"><i class="fas fa-search"></i> {{ $ts.lookup }}</FormButton>
+				<FormButton v-if="$instance.disableRegistration" @click="invite"><i class="fas fa-user"></i> {{ $ts.invite }}</FormButton>
+			</FormGroup>
+			<FormGroup>
+				<template #label>{{ $ts.administration }}</template>
+				<FormLink :active="page === 'users'" replace to="/instance/users"><template #icon><i class="fas fa-users"></i></template>{{ $ts.users }}</FormLink>
+				<FormLink :active="page === 'emojis'" replace to="/instance/emojis"><template #icon><i class="fas fa-laugh"></i></template>{{ $ts.customEmojis }}</FormLink>
+				<FormLink :active="page === 'federation'" replace to="/instance/federation"><template #icon><i class="fas fa-globe"></i></template>{{ $ts.federation }}</FormLink>
+				<FormLink :active="page === 'queue'" replace to="/instance/queue"><template #icon><i class="fas fa-clipboard-list"></i></template>{{ $ts.jobQueue }}</FormLink>
+				<FormLink :active="page === 'files'" replace to="/instance/files"><template #icon><i class="fas fa-cloud"></i></template>{{ $ts.files }}</FormLink>
+				<FormLink :active="page === 'announcements'" replace to="/instance/announcements"><template #icon><i class="fas fa-broadcast-tower"></i></template>{{ $ts.announcements }}</FormLink>
+				<FormLink :active="page === 'ads'" replace to="/instance/ads"><template #icon><i class="fas fa-audio-description"></i></template>{{ $ts.ads }}</FormLink>
+				<FormLink :active="page === 'abuses'" replace to="/instance/abuses"><template #icon><i class="fas fa-exclamation-circle"></i></template>{{ $ts.abuseReports }}</FormLink>
+			</FormGroup>
+			<FormGroup>
+				<template #label>{{ $ts.settings }}</template>
+				<FormLink :active="page === 'settings'" replace to="/instance/settings"><template #icon><i class="fas fa-cog"></i></template>{{ $ts.general }}</FormLink>
+				<FormLink :active="page === 'files-settings'" replace to="/instance/files-settings"><template #icon><i class="fas fa-cloud"></i></template>{{ $ts.files }}</FormLink>
+				<FormLink :active="page === 'email-settings'" replace to="/instance/email-settings"><template #icon><i class="fas fa-envelope"></i></template>{{ $ts.emailServer }}</FormLink>
+				<FormLink :active="page === 'object-storage'" replace to="/instance/object-storage"><template #icon><i class="fas fa-cloud"></i></template>{{ $ts.objectStorage }}</FormLink>
+				<FormLink :active="page === 'security'" replace to="/instance/security"><template #icon><i class="fas fa-lock"></i></template>{{ $ts.security }}</FormLink>
+				<FormLink :active="page === 'service-worker'" replace to="/instance/service-worker"><template #icon><i class="fas fa-bolt"></i></template>ServiceWorker</FormLink>
+				<FormLink :active="page === 'relays'" replace to="/instance/relays"><template #icon><i class="fas fa-globe"></i></template>{{ $ts.relays }}</FormLink>
+				<FormLink :active="page === 'integrations'" replace to="/instance/integrations"><template #icon><i class="fas fa-share-alt"></i></template>{{ $ts.integration }}</FormLink>
+				<FormLink :active="page === 'instance-block'" replace to="/instance/instance-block"><template #icon><i class="fas fa-ban"></i></template>{{ $ts.instanceBlocking }}</FormLink>
+				<FormLink :active="page === 'proxy-account'" replace to="/instance/proxy-account"><template #icon><i class="fas fa-ghost"></i></template>{{ $ts.proxyAccount }}</FormLink>
+				<FormLink :active="page === 'other-settings'" replace to="/instance/other-settings"><template #icon><i class="fas fa-cogs"></i></template>{{ $ts.other }}</FormLink>
+			</FormGroup>
+			<FormGroup>
+				<template #label>{{ $ts.info }}</template>
+				<FormLink :active="page === 'database'" replace to="/instance/database"><template #icon><i class="fas fa-database"></i></template>{{ $ts.database }}</FormLink>
+			</FormGroup>
+		</FormBase>
+	</div>
+	<div class="main">
+		<component :is="component" :key="page" @info="onInfo" v-bind="pageProps"/>
+	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faServer, faExchangeAlt, faMicrochip, faHdd, faStream, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
-import Chart from 'chart.js';
-import VueJsonPretty from 'vue-json-pretty';
-import MkInstanceStats from '../../components/instance-stats.vue';
-import MkButton from '../../components/ui/button.vue';
-import MkSelect from '../../components/ui/select.vue';
-import MkInput from '../../components/ui/input.vue';
-import { version, url } from '../../config';
-import i18n from '../../i18n';
+import { computed, defineAsyncComponent, defineComponent, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { i18n } from '@client/i18n';
+import FormLink from '@client/components/form/link.vue';
+import FormGroup from '@client/components/form/group.vue';
+import FormBase from '@client/components/form/base.vue';
+import FormButton from '@client/components/form/button.vue';
+import { scroll } from '@client/scripts/scroll';
+import * as symbols from '@client/symbols';
+import * as os from '@client/os';
+import { lookupUser } from '@client/scripts/lookup-user';
 
-const alpha = (hex, a) => {
-	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)!;
-	const r = parseInt(result[1], 16);
-	const g = parseInt(result[2], 16);
-	const b = parseInt(result[3], 16);
-	return `rgba(${r}, ${g}, ${b}, ${a})`;
-};
-
-export default Vue.extend({
-	i18n,
-
-	metaInfo() {
-		return {
-			title: this.$t('instance') as string
-		};
-	},
-
+export default defineComponent({
 	components: {
-		MkInstanceStats,
-		MkButton,
-		MkSelect,
-		MkInput,
-		VueJsonPretty
+		FormBase,
+		FormLink,
+		FormGroup,
+		FormButton,
 	},
 
-	data() {
-		return {
-			version,
-			url,
-			stats: null,
-			serverInfo: null,
-			connection: null,
-			memUsage: 0,
-			chartCpuMem: null,
-			chartNet: null,
-			logs: [],
-			logLevel: 'all',
-			logDomain: '',
-			faServer, faExchangeAlt, faMicrochip, faHdd, faStream, faTrashAlt
+	props: {
+		initialPage: {
+			type: String,
+			required: false
 		}
 	},
 
-	computed: {
-		meta() {
-			return this.$store.state.instance.meta;
-		},
-	},
-
-	watch: {
-		logLevel() {
-			this.logs = [];
-			this.fetchLogs();
-		},
-		logDomain() {
-			this.logs = [];
-			this.fetchLogs();
-		}
-	},
-
-	mounted() {
-		this.fetchLogs();
-	
-		Chart.defaults.global.defaultFontColor = getComputedStyle(document.documentElement).getPropertyValue('--fg');
-
-		this.chartCpuMem = new Chart(this.$refs.cpumem, {
-			type: 'line',
-			data: {
-				labels: [],
-				datasets: [{
-					label: 'CPU',
-					pointRadius: 0,
-					lineTension: 0,
-					borderWidth: 2,
-					borderColor: '#86b300',
-					backgroundColor: alpha('#86b300', 0.1),
-					data: []
-				}, {
-					label: 'MEM (active)',
-					pointRadius: 0,
-					lineTension: 0,
-					borderWidth: 2,
-					borderColor: '#935dbf',
-					backgroundColor: alpha('#935dbf', 0.02),
-					data: []
-				}, {
-					label: 'MEM (used)',
-					pointRadius: 0,
-					lineTension: 0,
-					borderWidth: 2,
-					borderColor: '#935dbf',
-					borderDash: [5, 5],
-					fill: false,
-					data: []
-				}]
-			},
-			options: {
-				aspectRatio: 3,
-				layout: {
-					padding: {
-						left: 0,
-						right: 0,
-						top: 8,
-						bottom: 0
-					}
-				},
-				legend: {
-					position: 'bottom',
-					labels: {
-						boxWidth: 16,
-					}
-				},
-				scales: {
-					xAxes: [{
-						gridLines: {
-							display: false
-						},
-						ticks: {
-							display: false
-						}
-					}],
-					yAxes: [{
-						position: 'right',
-						ticks: {
-							display: false,
-							max: 100
-						}
-					}]
-				},
-				tooltips: {
-					intersect: false,
-					mode: 'index',
-				}
+	setup(props, context) {
+		const indexInfo = {
+			title: i18n.locale.instance,
+			icon: 'fas fa-cog'
+		};
+		const INFO = ref(indexInfo);
+		const page = ref(props.initialPage);
+		const narrow = ref(false);
+		const view = ref(null);
+		const el = ref(null);
+		const onInfo = (viewInfo) => {
+			INFO.value = viewInfo;
+		};
+		const pageProps = ref({});
+		const component = computed(() => {
+			if (page.value == null) return null;
+			switch (page.value) {
+				case 'overview': return defineAsyncComponent(() => import('./overview.vue'));
+				case 'users': return defineAsyncComponent(() => import('./users.vue'));
+				case 'emojis': return defineAsyncComponent(() => import('./emojis.vue'));
+				case 'federation': return defineAsyncComponent(() => import('./federation.vue'));
+				case 'queue': return defineAsyncComponent(() => import('./queue.vue'));
+				case 'files': return defineAsyncComponent(() => import('./files.vue'));
+				case 'announcements': return defineAsyncComponent(() => import('./announcements.vue'));
+				case 'ads': return defineAsyncComponent(() => import('./ads.vue'));
+				case 'database': return defineAsyncComponent(() => import('./database.vue'));
+				case 'abuses': return defineAsyncComponent(() => import('./abuses.vue'));
+				case 'settings': return defineAsyncComponent(() => import('./settings.vue'));
+				case 'files-settings': return defineAsyncComponent(() => import('./files-settings.vue'));
+				case 'email-settings': return defineAsyncComponent(() => import('./email-settings.vue'));
+				case 'object-storage': return defineAsyncComponent(() => import('./object-storage.vue'));
+				case 'security': return defineAsyncComponent(() => import('./security.vue'));
+				case 'bot-protection': return defineAsyncComponent(() => import('./bot-protection.vue'));
+				case 'service-worker': return defineAsyncComponent(() => import('./service-worker.vue'));
+				case 'relays': return defineAsyncComponent(() => import('./relays.vue'));
+				case 'integrations': return defineAsyncComponent(() => import('./integrations.vue'));
+				case 'integrations/twitter': return defineAsyncComponent(() => import('./integrations-twitter.vue'));
+				case 'integrations/github': return defineAsyncComponent(() => import('./integrations-github.vue'));
+				case 'integrations/discord': return defineAsyncComponent(() => import('./integrations-discord.vue'));
+				case 'instance-block': return defineAsyncComponent(() => import('./instance-block.vue'));
+				case 'proxy-account': return defineAsyncComponent(() => import('./proxy-account.vue'));
+				case 'other-settings': return defineAsyncComponent(() => import('./other-settings.vue'));
 			}
 		});
 
-		this.chartNet = new Chart(this.$refs.net, {
-			type: 'line',
-			data: {
-				labels: [],
-				datasets: [{
-					label: 'In',
-					pointRadius: 0,
-					lineTension: 0,
-					borderWidth: 2,
-					borderColor: '#94a029',
-					backgroundColor: alpha('#94a029', 0.1),
-					data: []
-				}, {
-					label: 'Out',
-					pointRadius: 0,
-					lineTension: 0,
-					borderWidth: 2,
-					borderColor: '#ff9156',
-					backgroundColor: alpha('#ff9156', 0.1),
-					data: []
-				}]
-			},
-			options: {
-				aspectRatio: 3,
-				layout: {
-					padding: {
-						left: 0,
-						right: 0,
-						top: 8,
-						bottom: 0
-					}
-				},
-				legend: {
-					position: 'bottom',
-					labels: {
-						boxWidth: 16,
-					}
-				},
-				scales: {
-					xAxes: [{
-						gridLines: {
-							display: false
-						},
-						ticks: {
-							display: false
-						}
-					}],
-					yAxes: [{
-						position: 'right',
-						ticks: {
-							display: false,
-						}
-					}]
-				},
-				tooltips: {
-					intersect: false,
-					mode: 'index',
-				}
-			}
-		});
+		watch(component, () => {
+			pageProps.value = {};
 
-		this.chartDisk = new Chart(this.$refs.disk, {
-			type: 'line',
-			data: {
-				labels: [],
-				datasets: [{
-					label: 'Read',
-					pointRadius: 0,
-					lineTension: 0,
-					borderWidth: 2,
-					borderColor: '#94a029',
-					backgroundColor: alpha('#94a029', 0.1),
-					data: []
-				}, {
-					label: 'Write',
-					pointRadius: 0,
-					lineTension: 0,
-					borderWidth: 2,
-					borderColor: '#ff9156',
-					backgroundColor: alpha('#ff9156', 0.1),
-					data: []
-				}]
-			},
-			options: {
-				aspectRatio: 3,
-				layout: {
-					padding: {
-						left: 0,
-						right: 0,
-						top: 8,
-						bottom: 0
-					}
-				},
-				legend: {
-					position: 'bottom',
-					labels: {
-						boxWidth: 16,
-					}
-				},
-				scales: {
-					xAxes: [{
-						gridLines: {
-							display: false
-						},
-						ticks: {
-							display: false
-						}
-					}],
-					yAxes: [{
-						position: 'right',
-						ticks: {
-							display: false,
-						}
-					}]
-				},
-				tooltips: {
-					intersect: false,
-					mode: 'index',
-				}
-			}
-		});
-
-		this.$root.api('admin/server-info', {}).then(res => {
-			this.serverInfo = res;
-
-			this.connection = this.$root.stream.useSharedConnection('serverStats');
-			this.connection.on('stats', this.onStats);
-			this.connection.on('statsLog', this.onStatsLog);
-			this.connection.send('requestLog', {
-				id: Math.random().toString().substr(2, 8),
-				length: 150
+			nextTick(() => {
+				scroll(el.value, 0);
 			});
+		}, { immediate: true });
+
+		watch(() => props.initialPage, () => {
+			if (props.initialPage == null && !narrow.value) {
+				page.value = 'overview';
+			} else {
+				page.value = props.initialPage;
+				if (props.initialPage == null) {
+					INFO.value = indexInfo;
+				}
+			}
 		});
-	},
 
-	beforeDestroy() {
-		this.connection.off('stats', this.onStats);
-		this.connection.off('statsLog', this.onStatsLog);
-		this.connection.dispose();
-	},
+		onMounted(() => {
+			narrow.value = el.value.offsetWidth < 800;
+			if (!narrow.value) {
+				page.value = 'overview';
+			}
+		});
 
-	methods: {
-		fetchLogs() {
-			this.$root.api('admin/logs', {
-				level: this.logLevel === 'all' ? null : this.logLevel,
-				domain: this.logDomain === '' ? null : this.logDomain,
-				limit: 30
-			}).then(logs => {
-				this.logs = logs.reverse();
-			});
-		},
-
-		deleteAllLogs() {
-			this.$root.api('admin/delete-logs').then(() => {
-				this.$root.dialog({
-					type: 'success',
-					iconOnly: true, autoClose: true
+		const invite = () => {
+			os.api('admin/invite').then(x => {
+				os.dialog({
+					type: 'info',
+					text: x.code
+				});
+			}).catch(e => {
+				os.dialog({
+					type: 'error',
+					text: e
 				});
 			});
-		},
+		};
 
-		onStats(stats) {
-			const cpu = (stats.cpu * 100).toFixed(0);
-			const memActive = (stats.mem.active / this.serverInfo.mem.total * 100).toFixed(0);
-			const memUsed = (stats.mem.used / this.serverInfo.mem.total * 100).toFixed(0);
-			this.memUsage = stats.mem.active;
+		const lookup = (ev) => {
+			os.modalMenu([{
+				text: i18n.locale.user,
+				icon: 'fas fa-user',
+				action: () => {
+					lookupUser();
+				}
+			}, {
+				text: i18n.locale.note,
+				icon: 'fas fa-pencil-alt',
+				action: () => {
+					alert('TODO');
+				}
+			}, {
+				text: i18n.locale.file,
+				icon: 'fas fa-cloud',
+				action: () => {
+					alert('TODO');
+				}
+			}, {
+				text: i18n.locale.instance,
+				icon: 'fas fa-globe',
+				action: () => {
+					alert('TODO');
+				}
+			}], ev.currentTarget || ev.target);
+		};
 
-			this.chartCpuMem.data.labels.push('');
-			this.chartCpuMem.data.datasets[0].data.push(cpu);
-			this.chartCpuMem.data.datasets[1].data.push(memActive);
-			this.chartCpuMem.data.datasets[2].data.push(memUsed);
-			this.chartNet.data.labels.push('');
-			this.chartNet.data.datasets[0].data.push(stats.net.rx);
-			this.chartNet.data.datasets[1].data.push(stats.net.tx);
-			this.chartDisk.data.labels.push('');
-			this.chartDisk.data.datasets[0].data.push(stats.fs.r);
-			this.chartDisk.data.datasets[1].data.push(stats.fs.w);
-			if (this.chartCpuMem.data.datasets[0].data.length > 150) {
-				this.chartCpuMem.data.labels.shift();
-				this.chartCpuMem.data.datasets[0].data.shift();
-				this.chartCpuMem.data.datasets[1].data.shift();
-				this.chartCpuMem.data.datasets[2].data.shift();
-				this.chartNet.data.labels.shift();
-				this.chartNet.data.datasets[0].data.shift();
-				this.chartNet.data.datasets[1].data.shift();
-				this.chartDisk.data.labels.shift();
-				this.chartDisk.data.datasets[0].data.shift();
-				this.chartDisk.data.datasets[1].data.shift();
-			}
-			this.chartCpuMem.update();
-			this.chartNet.update();
-			this.chartDisk.update();
-		},
-
-		onStatsLog(statsLog) {
-			for (const stats of statsLog.reverse()) {
-				this.onStats(stats);
-			}
-		}
-	}
+		return {
+			[symbols.PAGE_INFO]: INFO,
+			page,
+			narrow,
+			view,
+			el,
+			onInfo,
+			pageProps,
+			component,
+			invite,
+			lookup,
+		};
+	},
 });
 </script>
 
 <style lang="scss" scoped>
-.xhexznfu {
-	> .stats {
+.hiyeyicy {
+	&.wide {
 		display: flex;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		margin: calc(0px - var(--margin) / 2);
-		margin-bottom: calc(var(--margin) / 2);
+		max-width: 1100px;
+		margin: 0 auto;
+		height: 100%;
 
-		> div {
-			flex: 1 0 213px;
-			margin: calc(var(--margin) / 2);
+		> .nav {
+			width: 32%;
 			box-sizing: border-box;
-			padding: 16px;
+			border-right: solid 0.5px var(--divider);
+			overflow: auto;
+		}
+
+		> .main {
+			flex: 1;
+			min-width: 0;
+			overflow: auto;
+			--baseContentWidth: 100%;
 		}
 	}
+}
 
-	> .logs {
-		> ._content {
-			> .logs {
-				padding: 8px;
-				background: #000;
-				color: #fff;
-				font-size: 0.9em;
+.lxpfedzu {
+	padding: 16px;
 
-				> code {
-					display: block;
-
-					&.error {
-						color: #f00;
-					}
-
-					&.warning {
-						color: #ff0;
-					}
-
-					&.success {
-						color: #0f0;
-					}
-
-					&.debug {
-						opacity: 0.7;
-					}
-				}
-			}
-		}
-	}
-
-	> .chart {
-		> ._content {
-			> .table {
-				> .row {
-					display: flex;
-
-					&:not(:last-child) {
-						margin-bottom: 16px;
-
-						@media (max-width: 500px) {
-							margin-bottom: 8px;
-						}
-					}
-
-					> .cell {
-						flex: 1;
-
-						> .label {
-							font-size: 80%;
-							opacity: 0.7;
-
-							> .icon {
-								margin-right: 4px;
-								display: none;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	> .info {
-		> .table {
-			> div {
-				display: flex;
-
-				> * {
-					flex: 1;
-				}
-			}
-		}
+	> .icon {
+		display: block;
+		margin: auto;
+		height: 42px;
+		border-radius: 8px;
 	}
 }
 </style>

@@ -1,30 +1,32 @@
 <template>
-<div>
-	<mk-container :show-header="!props.compact">
-		<template #header><fa :icon="faStickyNote"/>{{ $t('_widgets.memo') }}</template>
+<MkContainer :show-header="props.showHeader">
+	<template #header><i class="fas fa-sticky-note"></i>{{ $ts._widgets.memo }}</template>
 
-		<div class="otgbylcu">
-			<textarea v-model="text" :placeholder="$t('placeholder')" @input="onChange"></textarea>
-			<button @click="saveMemo" :disabled="!changed" class="_buttonPrimary">{{ $t('save') }}</button>
-		</div>
-	</mk-container>
-</div>
+	<div class="otgbylcu">
+		<textarea v-model="text" :placeholder="$ts.placeholder" @input="onChange"></textarea>
+		<button @click="saveMemo" :disabled="!changed" class="_buttonPrimary">{{ $ts.save }}</button>
+	</div>
+</MkContainer>
 </template>
 
 <script lang="ts">
-import { faStickyNote } from '@fortawesome/free-solid-svg-icons';
-import MkContainer from '../components/ui/container.vue';
+import { defineComponent } from 'vue';
+import MkContainer from '@client/components/ui/container.vue';
 import define from './define';
-import i18n from '../i18n';
+import * as os from '@client/os';
 
-export default define({
+const widget = define({
 	name: 'memo',
 	props: () => ({
-		compact: false
+		showHeader: {
+			type: 'boolean',
+			default: true,
+		},
 	})
-}).extend({
-	i18n,
-	
+});
+
+export default defineComponent({
+	extends: widget,
 	components: {
 		MkContainer
 	},
@@ -34,24 +36,18 @@ export default define({
 			text: null,
 			changed: false,
 			timeoutId: null,
-			faStickyNote
 		};
 	},
 
 	created() {
-		this.text = this.$store.state.settings.memo;
+		this.text = this.$store.state.memo;
 
-		this.$watch('$store.state.settings.memo', text => {
+		this.$watch(() => this.$store.reactiveState.memo, text => {
 			this.text = text;
 		});
 	},
 
 	methods: {
-		func() {
-			this.props.compact = !this.props.compact;
-			this.save();
-		},
-
 		onChange() {
 			this.changed = true;
 			clearTimeout(this.timeoutId);
@@ -59,10 +55,7 @@ export default define({
 		},
 
 		saveMemo() {
-			this.$store.dispatch('settings/set', {
-				key: 'memo',
-				value: this.text
-			});
+			this.$store.set('memo', this.text);
 			this.changed = false;
 		}
 	}
@@ -79,12 +72,18 @@ export default define({
 		max-width: 100%;
 		min-width: 100%;
 		padding: 16px;
-		color: var(--inputText);
-		background: var(--face);
+		color: var(--fg);
+		background: transparent;
 		border: none;
-		border-bottom: solid var(--lineWidth) var(--faceDivider);
+		border-bottom: solid 0.5px var(--divider);
 		border-radius: 0;
 		box-sizing: border-box;
+		font: inherit;
+		font-size: 0.9em;
+
+		&:focus {
+			outline: none;
+		}
 	}
 
 	> button {

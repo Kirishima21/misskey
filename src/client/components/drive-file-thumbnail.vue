@@ -1,54 +1,28 @@
 <template>
-<div class="zdjebgpv" :class="{ detail }" ref="thumbnail" :style="`background-color: ${ background }`">
-	<img
-		:src="file.url"
-		:alt="file.name"
-		:title="file.name"
-		@load="onThumbnailLoaded"
-		v-if="detail && is === 'image'"/>
-	<video
-		:src="file.url"
-		ref="volumectrl"
-		preload="metadata"
-		controls
-		v-else-if="detail && is === 'video'"/>
-	<img :src="file.thumbnailUrl" @load="onThumbnailLoaded" :style="`object-fit: ${ fit }`" v-else-if="isThumbnailAvailable"/>
-	<fa :icon="faFileImage" class="icon" v-else-if="is === 'image'"/>
-	<fa :icon="faFileVideo" class="icon" v-else-if="is === 'video'"/>
+<div class="zdjebgpv" ref="thumbnail">
+	<ImgWithBlurhash v-if="isThumbnailAvailable" :hash="file.blurhash" :src="file.thumbnailUrl" :alt="file.name" :title="file.name" :style="`object-fit: ${ fit }`"/>
+	<i v-else-if="is === 'image'" class="fas fa-file-image icon"></i>
+	<i v-else-if="is === 'video'" class="fas fa-file-video icon"></i>
+	<i v-else-if="is === 'audio' || is === 'midi'" class="fas fa-music icon"></i>
+	<i v-else-if="is === 'csv'" class="fas fa-file-csv icon"></i>
+	<i v-else-if="is === 'pdf'" class="fas fa-file-pdf icon"></i>
+	<i v-else-if="is === 'textfile'" class="fas fa-file-alt icon"></i>
+	<i v-else-if="is === 'archive'" class="fas fa-file-archive icon"></i>
+	<i v-else class="fas fa-file icon"></i>
 
-	<audio
-		:src="file.url"
-		ref="volumectrl"
-		preload="metadata"
-		controls
-		v-else-if="detail && is === 'audio'"/>
-	<fa :icon="faMusic" class="icon" v-else-if="is === 'audio' || is === 'midi'"/>
-
-	<fa :icon="faFileCsv" class="icon" v-else-if="is === 'csv'"/>
-	<fa :icon="faFilePdf" class="icon" v-else-if="is === 'pdf'"/>
-	<fa :icon="faFileAlt" class="icon" v-else-if="is === 'textfile'"/>
-	<fa :icon="faFileArchive" class="icon" v-else-if="is === 'archive'"/>
-	<fa :icon="faFile" class="icon" v-else/>
-
-	<fa :icon="faFilm" class="icon-sub" v-if="!detail && isThumbnailAvailable && is === 'video'"/>
+	<i v-if="isThumbnailAvailable && is === 'video'" class="fas fa-film icon-sub"></i>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import {
-	faFile,
-	faFileAlt,
-	faFileImage,
-	faMusic,
-	faFileVideo,
-	faFileCsv,
-	faFilePdf,
-	faFileArchive,
-	faFilm
-	} from '@fortawesome/free-solid-svg-icons';
+import { defineComponent } from 'vue';
+import ImgWithBlurhash from '@client/components/img-with-blurhash.vue';
+import { ColdDeviceStorage } from '@client/store';
 
-export default Vue.extend({
+export default defineComponent({
+	components: {
+		ImgWithBlurhash
+	},
 	props: {
 		file: {
 			type: Object,
@@ -59,26 +33,12 @@ export default Vue.extend({
 			required: false,
 			default: 'cover'
 		},
-		detail: {
-			type: Boolean,
-			required: false,
-			default: false
-		}
 	},
 	data() {
 		return {
 			isContextmenuShowing: false,
 			isDragging: false,
 
-			faFile,
-			faFileAlt,
-			faFileImage,
-			faMusic,
-			faFileVideo,
-			faFileCsv,
-			faFilePdf,
-			faFileArchive,
-			faFilm
 		};
 	},
 	computed: {
@@ -108,23 +68,15 @@ export default Vue.extend({
 				? (this.is === 'image' || this.is === 'video')
 				: false;
 		},
-		background(): string {
-			return this.file.properties.avgColor || 'transparent';
-		}
 	},
 	mounted() {
 		const audioTag = this.$refs.volumectrl as HTMLAudioElement;
-		if (audioTag) audioTag.volume = this.$store.state.device.mediaVolume;
+		if (audioTag) audioTag.volume = ColdDeviceStorage.get('mediaVolume');
 	},
 	methods: {
-		onThumbnailLoaded() {
-			if (this.file.properties.avgColor) {
-				this.$refs.thumbnail.style.backgroundColor = 'transparent';
-			}
-		},
 		volumechange() {
 			const audioTag = this.$refs.volumectrl as HTMLAudioElement;
-			this.$store.commit('device/set', { key: 'mediaVolume', value: audioTag.volume });
+			ColdDeviceStorage.set('mediaVolume', audioTag.volume);
 		}
 	}
 });
@@ -132,13 +84,7 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .zdjebgpv {
-	display: flex;
 	position: relative;
-
-	> img,
-	> .icon {
-		pointer-events: none;
-	}
 
 	> .icon-sub {
 		position: absolute;
@@ -153,37 +99,10 @@ export default Vue.extend({
 		margin: auto;
 	}
 
-	&:not(.detail) {
-		> img {
-			height: 100%;
-			width: 100%;
-			object-fit: cover;
-		}
-
-		> .icon {
-			height: 65%;
-			width: 65%;
-		}
-
-		> video,
-		> audio {
-			width: 100%;
-		}
-	}
-
-	&.detail {
-		> .icon {
-			height: 100px;
-			width: 100px;
-			margin: 16px;
-		}
-
-		> *:not(.icon) {
-			max-height: 300px;
-			max-width: 100%;
-			height: 100%;
-			object-fit: contain;
-		}
+	> .icon {
+		pointer-events: none;
+		height: 65%;
+		width: 65%;
 	}
 }
 </style>

@@ -1,27 +1,26 @@
 import keyCode from './keycode';
-import { concat } from '../../prelude/array';
 
-type pattern = {
+type Keymap = Record<string, Function>;
+
+type Pattern = {
 	which: string[];
 	ctrl?: boolean;
 	shift?: boolean;
 	alt?: boolean;
 };
 
-type action = {
-	patterns: pattern[];
-
+type Action = {
+	patterns: Pattern[];
 	callback: Function;
-
 	allowRepeat: boolean;
 };
 
-const getKeyMap = keymap => Object.entries(keymap).map(([patterns, callback]): action => {
+const parseKeymap = (keymap: Keymap) => Object.entries(keymap).map(([patterns, callback]): Action => {
 	const result = {
 		patterns: [],
 		callback: callback,
 		allowRepeat: true
-	} as action;
+	} as Action;
 
 	if (patterns.match(/^\(.*\)$/) !== null) {
 		result.allowRepeat = false;
@@ -34,7 +33,7 @@ const getKeyMap = keymap => Object.entries(keymap).map(([patterns, callback]): a
 			ctrl: false,
 			alt: false,
 			shift: false
-		} as pattern;
+		} as Pattern;
 
 		const keys = part.trim().split('+').map(x => x.trim().toLowerCase());
 		for (const key of keys) {
@@ -54,62 +53,36 @@ const getKeyMap = keymap => Object.entries(keymap).map(([patterns, callback]): a
 
 const ignoreElemens = ['input', 'textarea'];
 
-function match(e: KeyboardEvent, patterns: action['patterns']): boolean {
+function match(e: KeyboardEvent, patterns: Action['patterns']): boolean {
 	const key = e.code.toLowerCase();
 	return patterns.some(pattern => pattern.which.includes(key) &&
-		pattern.ctrl == e.ctrlKey &&
-		pattern.shift == e.shiftKey &&
-		pattern.alt == e.altKey &&
+		pattern.ctrl === e.ctrlKey &&
+		pattern.shift === e.shiftKey &&
+		pattern.alt === e.altKey &&
 		!e.metaKey
 	);
 }
 
-export default {
-	install(Vue) {
-		Vue.directive('hotkey', {
-			bind(el, binding) {
-				el._hotkey_global = binding.modifiers.global === true;
+export const makeHotkey = (keymap: Keymap) => {
+	const actions = parseKeymap(keymap);
 
-				const actions = getKeyMap(binding.value);
+	return (e: KeyboardEvent) => {
+		if (document.activeElement) {
+			if (ignoreElemens.some(el => document.activeElement!.matches(el))) return;
+			if (document.activeElement.attributes['contenteditable']) return;
+		}
 
-				// flatten
-				const reservedKeys = concat(actions.map(a => a.patterns));
+		for (const action of actions) {
+			const matched = match(e, action.patterns);
 
-				el._misskey_reservedKeys = reservedKeys;
+			if (matched) {
+				if (!action.allowRepeat && e.repeat) return;
 
-				el._keyHandler = (e: KeyboardEvent) => {
-					const targetReservedKeys = document.activeElement ? ((document.activeElement as any)._misskey_reservedKeys || []) : [];
-					if (document.activeElement && ignoreElemens.some(el => document.activeElement.matches(el))) return;
-
-					for (const action of actions) {
-						const matched = match(e, action.patterns);
-
-						if (matched) {
-							if (!action.allowRepeat && e.repeat) return;
-							if (el._hotkey_global && match(e, targetReservedKeys)) return;
-
-							e.preventDefault();
-							e.stopPropagation();
-							action.callback(e);
-							break;
-						}
-					}
-				};
-
-				if (el._hotkey_global) {
-					document.addEventListener('keydown', el._keyHandler);
-				} else {
-					el.addEventListener('keydown', el._keyHandler);
-				}
-			},
-
-			unbind(el) {
-				if (el._hotkey_global) {
-					document.removeEventListener('keydown', el._keyHandler);
-				} else {
-					el.removeEventListener('keydown', el._keyHandler);
-				}
+				e.preventDefault();
+				e.stopPropagation();
+				action.callback(e);
+				break;
 			}
-		});
-	}
+		}
+	};
 };

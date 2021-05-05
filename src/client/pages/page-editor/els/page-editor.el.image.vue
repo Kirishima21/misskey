@@ -1,32 +1,27 @@
 <template>
-<x-container @remove="() => $emit('remove')" :draggable="true">
-	<template #header><fa :icon="faImage"/> {{ $t('_pages.blocks.image') }}</template>
+<XContainer @remove="() => $emit('remove')" :draggable="true">
+	<template #header><i class="fas fa-image"></i> {{ $ts._pages.blocks.image }}</template>
 	<template #func>
 		<button @click="choose()">
-			<fa :icon="faFolderOpen"/>
+			<i class="fas fa-folder-open"></i>
 		</button>
 	</template>
 
 	<section class="oyyftmcf">
-		<mk-file-thumbnail class="preview" v-if="file" :file="file" :detail="true" fit="contain" @click="choose()"/>
+		<MkDriveFileThumbnail class="preview" v-if="file" :file="file" fit="contain" @click="choose()"/>
 	</section>
-</x-container>
+</XContainer>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faPencilAlt } from '@fortawesome/free-solid-svg-icons';
-import { faImage, faFolderOpen } from '@fortawesome/free-regular-svg-icons';
-import i18n from '../../../i18n';
+import { defineComponent } from 'vue';
 import XContainer from '../page-editor.container.vue';
-import MkFileThumbnail from '../../../components/drive-file-thumbnail.vue';
-import { selectDriveFile } from '../../../scripts/select-drive-file';
+import MkDriveFileThumbnail from '@client/components/drive-file-thumbnail.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
-		XContainer, MkFileThumbnail
+		XContainer, MkDriveFileThumbnail
 	},
 
 	props: {
@@ -38,19 +33,18 @@ export default Vue.extend({
 	data() {
 		return {
 			file: null,
-			faPencilAlt, faImage, faFolderOpen
 		};
 	},
 
 	created() {
-		if (this.value.fileId === undefined) Vue.set(this.value, 'fileId', null);
+		if (this.value.fileId === undefined) this.value.fileId = null;
 	},
 
 	mounted() {
 		if (this.value.fileId == null) {
 			this.choose();
 		} else {
-			this.$root.api('drive/files/show', {
+			os.api('drive/files/show', {
 				fileId: this.value.fileId
 			}).then(file => {
 				this.file = file;
@@ -60,7 +54,7 @@ export default Vue.extend({
 
 	methods: {
 		async choose() {
-			selectDriveFile(this.$root, false).then(file => {
+			os.selectDriveFile(false).then(file => {
 				this.file = file;
 				this.value.fileId = file.id;
 			});

@@ -1,35 +1,44 @@
 <template>
 <div class="hkcxmtwj">
-	<mk-switch v-model="v">{{ script.interpolate(value.text) }}</mk-switch>
+	<MkSwitch :value="value" @update:value="updateValue($event)">{{ hpml.interpolate(block.text) }}</MkSwitch>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { computed, defineComponent, PropType } from 'vue';
 import MkSwitch from '../ui/switch.vue';
+import * as os from '@client/os';
+import { Hpml } from '@client/scripts/hpml/evaluator';
+import { SwitchVarBlock } from '@client/scripts/hpml/block';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		MkSwitch
 	},
 	props: {
-		value: {
+		block: {
+			type: Object as PropType<SwitchVarBlock>,
 			required: true
 		},
-		script: {
+		hpml: {
+			type: Object as PropType<Hpml>,
 			required: true
 		}
 	},
-	data() {
-		return {
-			v: this.value.default,
-		};
-	},
-	watch: {
-		v() {
-			this.script.aiScript.updatePageVar(this.value.name, this.v);
-			this.script.eval();
+	setup(props, ctx) {
+		const value = computed(() => {
+			return props.hpml.vars.value[props.block.name];
+		});
+
+		function updateValue(newValue: boolean) {
+			props.hpml.updatePageVar(props.block.name, newValue);
+			props.hpml.eval();
 		}
+
+		return {
+			value,
+			updateValue
+		};
 	}
 });
 </script>

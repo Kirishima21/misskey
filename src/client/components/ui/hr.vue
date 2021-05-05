@@ -3,8 +3,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-export default Vue.extend({});
+import { defineComponent } from 'vue';import * as os from '@client/os';
+
+export default defineComponent({});
 </script>
 
 <style lang="scss" scoped>

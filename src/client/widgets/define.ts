@@ -1,34 +1,38 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { throttle } from 'throttle-debounce';
+import { Form } from '@client/scripts/form';
+import * as os from '@client/os';
 
-export default function <T extends object>(data: {
+export default function <T extends Form>(data: {
 	name: string;
 	props?: () => T;
 }) {
-	return Vue.extend({
+	return defineComponent({
 		props: {
 			widget: {
-				type: Object
+				type: Object,
+				required: false
 			},
-			isCustomizeMode: {
-				type: Boolean,
-				default: false
+			settingCallback: {
+				required: false
 			}
+		},
+
+		emits: ['updateProps'],
+
+		data() {
+			return {
+				props: this.widget ? JSON.parse(JSON.stringify(this.widget.data)) : {},
+				save: throttle(3000, () => {
+					this.$emit('updateProps', this.props);
+				}),
+			};
 		},
 
 		computed: {
 			id(): string {
-				return this.widget.id;
+				return this.widget ? this.widget.id : null;
 			},
-
-			props(): T {
-				return this.widget.data;
-			}
-		},
-
-		data() {
-			return {
-				bakedOldProps: null
-			};
 		},
 
 		created() {
@@ -36,7 +40,9 @@ export default function <T extends object>(data: {
 
 			this.$watch('props', () => {
 				this.mergeProps();
-			});
+			}, { deep: true });
+
+			if (this.settingCallback) this.settingCallback(this.setting);
 		},
 
 		methods: {
@@ -45,14 +51,25 @@ export default function <T extends object>(data: {
 					const defaultProps = data.props();
 					for (const prop of Object.keys(defaultProps)) {
 						if (this.props.hasOwnProperty(prop)) continue;
-						Vue.set(this.props, prop, defaultProps[prop]);
+						this.props[prop] = defaultProps[prop].default;
 					}
 				}
 			},
 
-			save() {
-				this.$store.commit('deviceUser/updateWidget', this.widget);
-			}
+			async setting() {
+				const form = data.props();
+				for (const item of Object.keys(form)) {
+					form[item].default = this.props[item];
+				}
+				const { canceled, result } = await os.form(data.name, form);
+				if (canceled) return;
+
+				for (const key of Object.keys(result)) {
+					this.props[key] = result[key];
+				}
+
+				this.save();
+			},
 		}
 	});
 }

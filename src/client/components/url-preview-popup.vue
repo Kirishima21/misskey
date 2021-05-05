@@ -1,17 +1,17 @@
 <template>
-<div class="fgmtyycl _panel" :style="{ top: top + 'px', left: left + 'px' }">
-	<mk-url-preview :url="url"/>
+<div class="fgmtyycl" :style="{ top: top + 'px', left: left + 'px' }">
+	<transition name="zoom" @after-leave="$emit('closed')">
+		<MkUrlPreview class="_popup _shadow" :url="url" v-if="showing"/>
+	</transition>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../i18n';
+import { defineComponent } from 'vue';
 import MkUrlPreview from './url-preview.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		MkUrlPreview
 	},
@@ -23,7 +23,11 @@ export default Vue.extend({
 		},
 		source: {
 			required: true
-		}
+		},
+		showing: {
+			type: Boolean,
+			required: true
+		},
 	},
 
 	data() {
@@ -36,7 +40,7 @@ export default Vue.extend({
 
 	mounted() {
 		const rect = this.source.getBoundingClientRect();
-		const x = ((rect.left + (this.source.offsetWidth / 2)) - (300 / 2)) + window.pageXOffset;
+		const x = Math.max((rect.left + (this.source.offsetWidth / 2)) - (300 / 2), 6) + window.pageXOffset;
 		const y = rect.top + this.source.offsetHeight + window.pageYOffset;
 
 		this.top = y;
@@ -50,7 +54,7 @@ export default Vue.extend({
 	position: absolute;
 	z-index: 11000;
 	width: 500px;
-	overflow: hidden;
+	max-width: calc(90vw - 12px);
 	pointer-events: none;
 }
 </style>

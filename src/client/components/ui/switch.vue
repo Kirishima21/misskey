@@ -5,7 +5,7 @@
 	role="switch"
 	:aria-checked="checked"
 	:aria-disabled="disabled"
-	@click="toggle"
+	@click.prevent="toggle"
 >
 	<input
 		type="checkbox"
@@ -17,21 +17,16 @@
 		<span></span>
 	</span>
 	<span class="label">
-		<span :aria-hidden="!checked"><slot></slot></span>
-		<p :aria-hidden="!checked">
-			<slot name="desc"></slot>
-		</p>
+		<span><slot></slot></span>
+		<p><slot name="desc"></slot></p>
 	</span>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-export default Vue.extend({
-	model: {
-		prop: 'value',
-		event: 'change'
-	},
+import { defineComponent } from 'vue';
+
+export default defineComponent({
 	props: {
 		value: {
 			type: Boolean,
@@ -50,7 +45,7 @@ export default Vue.extend({
 	methods: {
 		toggle() {
 			if (this.disabled) return;
-			this.$emit('change', !this.checked);
+			this.$emit('update:value', !this.checked);
 		}
 	}
 });
@@ -83,8 +78,8 @@ export default Vue.extend({
 
 	&.checked {
 		> .button {
-			background-color: var(--xxubwiul);
-			border-color: var(--xxubwiul);
+			background-color: var(--X10);
+			border-color: var(--X10);
 
 			> * {
 				background-color: var(--accent);
@@ -108,7 +103,7 @@ export default Vue.extend({
 		margin: 3px 0 0 0;
 		width: 34px;
 		height: 14px;
-		background: var(--nhzhphzx);
+		background: var(--X6);
 		outline: none;
 		border-radius: 14px;
 		transition: inherit;

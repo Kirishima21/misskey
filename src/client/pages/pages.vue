@@ -1,46 +1,62 @@
 <template>
 <div>
-	<portal to="icon"><fa :icon="faStickyNote"/></portal>
-	<portal to="title">{{ $t('pages') }}</portal>
+	<MkTab v-model:value="tab" v-if="$i">
+		<option value="featured"><i class="fas fa-fire-alt"></i> {{ $ts._pages.featured }}</option>
+		<option value="my"><i class="fas fa-edit"></i> {{ $ts._pages.my }}</option>
+		<option value="liked"><i class="fas fa-heart"></i> {{ $ts._pages.liked }}</option>
+	</MkTab>
 
-	<mk-container :body-togglable="true">
-		<template #header><fa :icon="faEdit" fixed-width/>{{ $t('_pages.my') }}</template>
-		<div class="rknalgpo my">
-			<mk-button class="new" @click="create()"><fa :icon="faPlus"/></mk-button>
-			<mk-pagination :pagination="myPagesPagination" #default="{items}">
-				<mk-page-preview v-for="page in items" class="ckltabjg" :page="page" :key="page.id"/>
-			</mk-pagination>
+	<div class="_section">
+		<div class="rknalgpo _content" v-if="tab === 'featured'">
+			<MkPagination :pagination="featuredPagesPagination" #default="{items}">
+				<MkPagePreview v-for="page in items" class="ckltabjg" :page="page" :key="page.id"/>
+			</MkPagination>
 		</div>
-	</mk-container>
 
-	<mk-container :body-togglable="true">
-		<template #header><fa :icon="faHeart" fixed-width/>{{ $t('_pages.liked') }}</template>
-		<div class="rknalgpo">
-			<mk-pagination :pagination="likedPagesPagination" #default="{items}">
-				<mk-page-preview v-for="like in items" class="ckltabjg" :page="like.page" :key="like.page.id"/>
-			</mk-pagination>
+		<div class="rknalgpo _content my" v-if="tab === 'my'">
+			<MkButton class="new" @click="create()"><i class="fas fa-plus"></i></MkButton>
+			<MkPagination :pagination="myPagesPagination" #default="{items}">
+				<MkPagePreview v-for="page in items" class="ckltabjg" :page="page" :key="page.id"/>
+			</MkPagination>
 		</div>
-	</mk-container>
+
+		<div class="rknalgpo _content" v-if="tab === 'liked'">
+			<MkPagination :pagination="likedPagesPagination" #default="{items}">
+				<MkPagePreview v-for="like in items" class="ckltabjg" :page="like.page" :key="like.page.id"/>
+			</MkPagination>
+		</div>
+	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faPlus, faEdit } from '@fortawesome/free-solid-svg-icons';
-import { faStickyNote, faHeart } from '@fortawesome/free-regular-svg-icons';
-import i18n from '../i18n';
-import MkPagePreview from '../components/page-preview.vue';
-import MkPagination from '../components/ui/pagination.vue';
-import MkButton from '../components/ui/button.vue';
-import MkContainer from '../components/ui/container.vue';
+import { defineComponent } from 'vue';
+import MkPagePreview from '@client/components/page-preview.vue';
+import MkPagination from '@client/components/ui/pagination.vue';
+import MkButton from '@client/components/ui/button.vue';
+import MkTab from '@client/components/tab.vue';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	i18n,
+export default defineComponent({
 	components: {
-		MkPagePreview, MkPagination, MkButton, MkContainer
+		MkPagePreview, MkPagination, MkButton, MkTab
 	},
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.pages,
+				icon: 'fas fa-sticky-note',
+				actions: [{
+					icon: 'fas fa-plus',
+					text: this.$ts.create,
+					handler: this.create
+				}]
+			},
+			tab: 'featured',
+			featuredPagesPagination: {
+				endpoint: 'pages/featured',
+				noPaging: true,
+			},
 			myPagesPagination: {
 				endpoint: 'i/pages',
 				limit: 5,
@@ -49,12 +65,11 @@ export default Vue.extend({
 				endpoint: 'i/page-likes',
 				limit: 5,
 			},
-			faStickyNote, faPlus, faEdit, faHeart
 		};
 	},
 	methods: {
 		create() {
-			this.$router.push(`/my/pages/new`);
+			this.$router.push(`/pages/new`);
 		}
 	}
 });
@@ -62,8 +77,6 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .rknalgpo {
-	padding: 16px;
-
 	&.my .ckltabjg:first-child {
 		margin-top: 16px;
 	}

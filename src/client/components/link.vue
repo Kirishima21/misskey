@@ -1,21 +1,21 @@
 <template>
-<component :is="self ? 'router-link' : 'a'" class="xlcxczvw _link" :[attr]="self ? url.substr(local.length) : url" :rel="rel" :target="target"
+<component :is="self ? 'MkA' : 'a'" class="xlcxczvw _link" :[attr]="self ? url.substr(local.length) : url" :rel="rel" :target="target"
 	@mouseover="onMouseover"
 	@mouseleave="onMouseleave"
 	:title="url"
 >
 	<slot></slot>
-	<fa :icon="faExternalLinkSquareAlt" v-if="target === '_blank'" class="icon"/>
+	<i v-if="target === '_blank'" class="fas fa-external-link-square-alt icon"></i>
 </component>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faExternalLinkSquareAlt } from '@fortawesome/free-solid-svg-icons';
-import { url as local } from '../config';
-import MkUrlPreview from './url-preview-popup.vue';
+import { defineComponent } from 'vue';
+import { url as local } from '@client/config';
+import { isDeviceTouch } from '@client/scripts/is-device-touch';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		url: {
 			type: String,
@@ -35,37 +35,43 @@ export default Vue.extend({
 			target: self ? null : '_blank',
 			showTimer: null,
 			hideTimer: null,
-			preview: null,
-			faExternalLinkSquareAlt
+			checkTimer: null,
+			close: null,
 		};
 	},
 	methods: {
-		showPreview() {
+		async showPreview() {
 			if (!document.body.contains(this.$el)) return;
-			if (this.preview) return;
+			if (this.close) return;
 
-			this.preview = new MkUrlPreview({
-				parent: this,
-				propsData: {
-					url: this.url,
-					source: this.$el
-				}
-			}).$mount();
+			const { dispose } = await os.popup(import('@client/components/url-preview-popup.vue'), {
+				url: this.url,
+				source: this.$el
+			});
 
-			document.body.appendChild(this.preview.$el);
+			this.close = () => {
+				dispose();
+			};
+
+			this.checkTimer = setInterval(() => {
+				if (!document.body.contains(this.$el)) this.closePreview();
+			}, 1000);
 		},
 		closePreview() {
-			if (this.preview) {
-				this.preview.destroyDom();
-				this.preview = null;
+			if (this.close) {
+				clearInterval(this.checkTimer);
+				this.close();
+				this.close = null;
 			}
 		},
 		onMouseover() {
+			if (isDeviceTouch) return;
 			clearTimeout(this.showTimer);
 			clearTimeout(this.hideTimer);
 			this.showTimer = setTimeout(this.showPreview, 500);
 		},
 		onMouseleave() {
+			if (isDeviceTouch) return;
 			clearTimeout(this.showTimer);
 			clearTimeout(this.hideTimer);
 			this.hideTimer = setTimeout(this.closePreview, 500);

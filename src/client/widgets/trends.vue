@@ -1,62 +1,60 @@
 <template>
-<div>
-	<mk-container :show-header="!props.compact">
-		<template #header><fa :icon="faHashtag"/>{{ $t('_widgets.trends') }}</template>
+<MkContainer :show-header="props.showHeader">
+	<template #header><i class="fas fa-hashtag"></i>{{ $ts._widgets.trends }}</template>
 
-		<div class="wbrkwala">
-			<mk-loading v-if="fetching"/>
-			<transition-group tag="div" name="chart" class="tags" v-else>
-				<div v-for="stat in stats" :key="stat.tag">
-					<div class="tag">
-						<router-link class="a" :to="`/tags/${ encodeURIComponent(stat.tag) }`" :title="stat.tag">#{{ stat.tag }}</router-link>
-						<p>{{ $t('nUsersMentioned', { n: stat.usersCount }) }}</p>
-					</div>
-					<x-chart class="chart" :src="stat.chart"/>
+	<div class="wbrkwala">
+		<MkLoading v-if="fetching"/>
+		<transition-group tag="div" name="chart" class="tags" v-else>
+			<div v-for="stat in stats" :key="stat.tag">
+				<div class="tag">
+					<MkA class="a" :to="`/tags/${ encodeURIComponent(stat.tag) }`" :title="stat.tag">#{{ stat.tag }}</MkA>
+					<p>{{ $t('nUsersMentioned', { n: stat.usersCount }) }}</p>
 				</div>
-			</transition-group>
-		</div>
-	</mk-container>
-</div>
+				<MkMiniChart class="chart" :src="stat.chart"/>
+			</div>
+		</transition-group>
+	</div>
+</MkContainer>
 </template>
 
 <script lang="ts">
-import { faHashtag } from '@fortawesome/free-solid-svg-icons';
-import MkContainer from '../components/ui/container.vue';
+import { defineComponent } from 'vue';
+import MkContainer from '@client/components/ui/container.vue';
 import define from './define';
-import i18n from '../i18n';
-import XChart from './trends.chart.vue';
+import MkMiniChart from '@client/components/mini-chart.vue';
+import * as os from '@client/os';
 
-export default define({
+const widget = define({
 	name: 'hashtags',
 	props: () => ({
-		compact: false
+		showHeader: {
+			type: 'boolean',
+			default: true,
+		},
 	})
-}).extend({
-	i18n,
+});
+
+export default defineComponent({
+	extends: widget,
 	components: {
-		MkContainer, XChart
+		MkContainer, MkMiniChart
 	},
 	data() {
 		return {
 			stats: [],
 			fetching: true,
-			faHashtag
 		};
 	},
 	mounted() {
 		this.fetch();
 		this.clock = setInterval(this.fetch, 1000 * 60);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		clearInterval(this.clock);
 	},
 	methods: {
-		func() {
-			this.props.compact = !this.props.compact;
-			this.save();
-		},
 		fetch() {
-			this.$root.api('hashtags/trend').then(stats => {
+			os.api('hashtags/trend').then(stats => {
 				this.stats = stats;
 				this.fetching = false;
 			});
@@ -79,7 +77,7 @@ export default define({
 			display: flex;
 			align-items: center;
 			padding: 14px 16px;
-			border-bottom: solid 1px var(--divider);
+			border-bottom: solid 0.5px var(--divider);
 
 			> .tag {
 				flex: 1;

@@ -1,25 +1,26 @@
 <template>
-<x-container @remove="() => $emit('remove')" :draggable="true">
-	<template #header><fa :icon="faPaperPlane"/> {{ $t('_pages.blocks.post') }}</template>
+<XContainer @remove="() => $emit('remove')" :draggable="true">
+	<template #header><i class="fas fa-paper-plane"></i> {{ $ts._pages.blocks.post }}</template>
 
-	<section style="padding: 0 16px 16px 16px;">
-		<mk-textarea v-model="value.text">{{ $t('_pages.blocks._post.text') }}</mk-textarea>
+	<section style="padding: 16px;">
+		<MkTextarea v-model:value="value.text">{{ $ts._pages.blocks._post.text }}</MkTextarea>
+		<MkSwitch v-model:value="value.attachCanvasImage"><span>{{ $ts._pages.blocks._post.attachCanvasImage }}</span></MkSwitch>
+		<MkInput v-if="value.attachCanvasImage" v-model:value="value.canvasId"><span>{{ $ts._pages.blocks._post.canvasId }}</span></MkInput>
 	</section>
-</x-container>
+</XContainer>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faPaperPlane } from '@fortawesome/free-regular-svg-icons';
-import i18n from '../../../i18n';
+import { defineComponent } from 'vue';
 import XContainer from '../page-editor.container.vue';
-import MkTextarea from '../../../components/ui/textarea.vue';
+import MkTextarea from '@client/components/ui/textarea.vue';
+import MkInput from '@client/components/ui/input.vue';
+import MkSwitch from '@client/components/ui/switch.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
-		XContainer, MkTextarea
+		XContainer, MkTextarea, MkInput, MkSwitch
 	},
 
 	props: {
@@ -30,12 +31,13 @@ export default Vue.extend({
 
 	data() {
 		return {
-			faPaperPlane
 		};
 	},
 
 	created() {
-		if (this.value.text == null) Vue.set(this.value, 'text', '');
+		if (this.value.text == null) this.value.text = '';
+		if (this.value.attachCanvasImage == null) this.value.attachCanvasImage = false;
+		if (this.value.canvasId == null) this.value.canvasId = '';
 	},
 });
 </script>

@@ -1,5 +1,5 @@
 import $ from 'cafy';
-import { ID } from '../../../../../misc/cafy-id';
+import { ID } from '@/misc/cafy-id';
 import define from '../../../define';
 import { ApiError } from '../../../error';
 import { DriveFile } from '../../../../../models/entities/drive-file';
@@ -91,6 +91,7 @@ export default define(meta, async (ps, user) => {
 
 	return await DriveFiles.pack(file, {
 		detail: true,
+		withUser: true,
 		self: true
 	});
 });

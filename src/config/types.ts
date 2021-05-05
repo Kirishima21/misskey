@@ -35,6 +35,7 @@ export type Source = {
 
 	proxy?: string;
 	proxySmtp?: string;
+	proxyBypassHosts?: string[];
 
 	accesslog?: string;
 
@@ -57,6 +58,8 @@ export type Source = {
 	};
 
 	mediaProxy?: string;
+
+	signToActivityPubGet?: boolean;
 };
 
 /**

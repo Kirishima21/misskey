@@ -4,10 +4,7 @@
 
 import * as fs from 'fs';
 import * as webpack from 'webpack';
-import * as chalk from 'chalk';
 const { VueLoaderPlugin } = require('vue-loader');
-const ProgressBarPlugin = require('progress-bar-webpack-plugin');
-const TerserPlugin = require('terser-webpack-plugin');
 
 class WebpackOnBuildPlugin {
 	constructor(readonly callback: (stats: any) => void) {
@@ -18,7 +15,7 @@ class WebpackOnBuildPlugin {
 	}
 }
 
-const isProduction = process.env.NODE_ENV == 'production';
+const isProduction = process.env.NODE_ENV === 'production';
 
 const locales = require('./locales');
 const meta = require('./package.json');
@@ -26,18 +23,20 @@ const meta = require('./package.json');
 const postcss = {
 	loader: 'postcss-loader',
 	options: {
-		plugins: [
-			require('cssnano')({
-				preset: 'default'
-			})
-		]
+		postcssOptions: {
+			plugins: [
+				require('cssnano')({
+					preset: 'default'
+				})
+			]
+		}
 	},
 };
 
 module.exports = {
 	entry: {
 		app: './src/client/init.ts',
-		sw: './src/client/sw.js'
+		sw: './src/client/sw/sw.ts'
 	},
 	module: {
 		rules: [{
@@ -51,8 +50,6 @@ module.exports = {
 						preserveWhitespace: false
 					}
 				}
-			}, {
-				loader: 'vue-svg-inline-loader'
 			}]
 		}, {
 			test: /\.scss?$/,
@@ -64,14 +61,16 @@ module.exports = {
 				}, {
 					loader: 'css-loader',
 					options: {
-						modules: true
+						modules: true,
+						esModule: false, // TODO: trueにすると壊れる。Vue3移行の折にはtrueにできるかもしれない
+						url: false,
 					}
 				}, postcss, {
 					loader: 'sass-loader',
 					options: {
 						implementation: require('sass'),
 						sassOptions: {
-							fiber: require('fibers')
+							fiber: false
 						}
 					}
 				}]
@@ -79,13 +78,17 @@ module.exports = {
 				use: [{
 					loader: 'vue-style-loader'
 				}, {
-					loader: 'css-loader'
+					loader: 'css-loader',
+					options: {
+						url: false,
+						esModule: false, // TODO: trueにすると壊れる。Vue3移行の折にはtrueにできるかもしれない
+					}
 				}, postcss, {
 					loader: 'sass-loader',
 					options: {
 						implementation: require('sass'),
 						sassOptions: {
-							fiber: require('fibers')
+							fiber: false
 						}
 					}
 				}]
@@ -95,14 +98,27 @@ module.exports = {
 			use: [{
 				loader: 'vue-style-loader'
 			}, {
-				loader: 'css-loader'
+				loader: 'css-loader',
+				options: {
+					esModule: false, // TODO: trueにすると壊れる。Vue3移行の折にはtrueにできるかもしれない
+				}
 			}, postcss]
 		}, {
+			test: /\.svg$/,
+			use: [
+				'vue-loader',
+				'vue-svg-loader',
+			],
+		}, {
 			test: /\.(eot|woff|woff2|svg|ttf)([?]?.*)$/,
-			loader: 'url-loader'
+			type: 'asset/resource'
 		}, {
 			test: /\.json5$/,
-			loader: 'json5-loader'
+			loader: 'json5-loader',
+			options: {
+				esModule: false,
+			},
+			type: 'javascript/auto'
 		}, {
 			test: /\.ts$/,
 			exclude: /node_modules/,
@@ -118,14 +134,18 @@ module.exports = {
 		}]
 	},
 	plugins: [
-		new ProgressBarPlugin({
-			format: chalk`  {cyan.bold Yes we can} {bold [}:bar{bold ]} {green.bold :percent} {gray :elapseds}`,
-			clear: false
-		}),
+		new webpack.ProgressPlugin({}),
 		new webpack.DefinePlugin({
 			_VERSION_: JSON.stringify(meta.version),
 			_LANGS_: JSON.stringify(Object.entries(locales).map(([k, v]: [string, any]) => [k, v._lang_])),
-			_ENV_: JSON.stringify(process.env.NODE_ENV)
+			_ENV_: JSON.stringify(process.env.NODE_ENV),
+			_DEV_: process.env.NODE_ENV !== 'production',
+			_PERF_PREFIX_: JSON.stringify('Misskey:'),
+			_DATA_TRANSFER_DRIVE_FILE_: JSON.stringify('mk_drive_file'),
+			_DATA_TRANSFER_DRIVE_FOLDER_: JSON.stringify('mk_drive_folder'),
+			_DATA_TRANSFER_DECK_COLUMN_: JSON.stringify('mk_deck_column'),
+			__VUE_OPTIONS_API__: true,
+			__VUE_PROD_DEVTOOLS__: false,
 		}),
 		new VueLoaderPlugin(),
 		new WebpackOnBuildPlugin((stats: any) => {
@@ -133,29 +153,27 @@ module.exports = {
 		}),
 	],
 	output: {
-		path: __dirname + '/built/client/assets',
+		path: __dirname + '/built/assets',
 		filename: `[name].${meta.version}.js`,
-		chunkFilename: '[hash:5].[id].js',
-		publicPath: `/assets/`
+		publicPath: `/assets/`,
+		pathinfo: false,
 	},
 	resolve: {
 		extensions: [
 			'.js', '.ts', '.json'
 		],
 		alias: {
+			'@client': __dirname + '/src/client',
+			'@': __dirname + '/src',
 			'const.styl': __dirname + '/src/client/const.styl'
 		}
 	},
 	resolveLoader: {
 		modules: ['node_modules']
 	},
-	externals: {
-		moment: 'moment'
+	experiments: {
+		topLevelAwait: true
 	},
-	optimization: {
-		minimizer: [new TerserPlugin()]
-	},
-	cache: true,
 	devtool: false, //'source-map',
 	mode: isProduction ? 'production' : 'development'
 };

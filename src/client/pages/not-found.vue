@@ -1,52 +1,25 @@
 <template>
 <div class="ipledcug">
-	<portal to="icon"><fa :icon="faExclamationTriangle"/></portal>
-	<portal to="title">{{ $t('notFound') }}</portal>
-
-	<section class="_card">
-		<div class="_content">
-			<img src="https://xn--931a.moe/assets/not-found.jpg" class="_ghost"/>
-			<div>{{ $t('notFoundDescription') }}</div>
-		</div>
-	</section>
+	<div class="_fullinfo">
+		<img src="https://xn--931a.moe/assets/not-found.jpg" class="_ghost"/>
+		<div>{{ $ts.notFoundDescription }}</div>
+	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../i18n';
+import { defineComponent } from 'vue';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	i18n,
-
-	metaInfo() {
-		return {
-			title: this.$t('notFound') as string
-		};
-	},
-
+export default defineComponent({
 	data() {
 		return {
-			faExclamationTriangle
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.notFound,
+				icon: 'fas fa-exclamation-triangle'
+			},
 		}
 	},
 });
 </script>
-
-<style lang="scss" scoped>
-.ipledcug {
-	> ._card {
-		> ._content {
-			text-align: center;
-					
-			> img {
-				vertical-align: bottom;
-				height: 150px;
-				margin-bottom: 16px;
-				border-radius: 16px;
-			}
-		}
-	}
-}
-</style>

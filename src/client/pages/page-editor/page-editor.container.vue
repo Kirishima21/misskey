@@ -5,34 +5,29 @@
 		<div class="buttons">
 			<slot name="func"></slot>
 			<button v-if="removable" @click="remove()" class="_button">
-				<fa :icon="faTrashAlt"/>
+				<i class="fas fa-trash-alt"></i>
 			</button>
 			<button v-if="draggable" class="drag-handle _button">
-				<fa :icon="faBars"/>
+				<i class="fas fa-bars"></i>
 			</button>
 			<button @click="toggleContent(!showBody)" class="_button">
-				<template v-if="showBody"><fa :icon="faAngleUp"/></template>
-				<template v-else><fa :icon="faAngleDown"/></template>
+				<template v-if="showBody"><i class="fas fa-angle-up"></i></template>
+				<template v-else><i class="fas fa-angle-down"></i></template>
 			</button>
 		</div>
 	</header>
 	<p v-show="showBody" class="error" v-if="error != null">{{ $t('_pages.script.typeError', { slot: error.arg + 1, expect: $t(`script.types.${error.expect}`), actual: $t(`script.types.${error.actual}`) }) }}</p>
 	<p v-show="showBody" class="warn" v-if="warn != null">{{ $t('_pages.script.thereIsEmptySlot', { slot: warn.slot + 1 }) }}</p>
-	<div v-show="showBody">
+	<div v-show="showBody" class="body">
 		<slot></slot>
 	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faBars, faAngleUp, faAngleDown } from '@fortawesome/free-solid-svg-icons';
-import { faTrashAlt } from '@fortawesome/free-regular-svg-icons';
-import i18n from '../../i18n';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	props: {
 		expanded: {
 			type: Boolean,
@@ -55,10 +50,10 @@ export default Vue.extend({
 			default: null
 		}
 	},
+	emits: ['toggle', 'remove'],
 	data() {
 		return {
 			showBody: this.expanded,
-			faTrashAlt, faBars, faAngleUp, faAngleDown
 		};
 	},
 	methods: {
@@ -78,11 +73,11 @@ export default Vue.extend({
 	position: relative;
 	overflow: hidden;
 	background: var(--panel);
-	border: solid 2px var(--jvhmlskx);
+	border: solid 2px var(--X12);
 	border-radius: 6px;
 
 	&:hover {
-		border: solid 2px var(--yakfpmhl);
+		border: solid 2px var(--X13);
 	}
 
 	&.warn {
@@ -107,7 +102,7 @@ export default Vue.extend({
 			font-weight: bold;
 			box-shadow: 0 1px rgba(#000, 0.07);
 
-			> [data-icon] {
+			> i {
 				margin-right: 6px;
 			}
 
@@ -147,6 +142,18 @@ export default Vue.extend({
 		margin: 0;
 		padding: 16px 16px 0 16px;
 		font-size: 14px;
+	}
+
+	> .body {
+		::v-deep(.juejbjww), ::v-deep(.eiipwacr) {
+			&:not(.inline):first-child {
+				margin-top: 28px;
+			}
+
+			&:not(.inline):last-child {
+				margin-bottom: 20px;
+			}
+		}
 	}
 }
 </style>

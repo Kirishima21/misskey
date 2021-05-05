@@ -1,22 +1,29 @@
 <template>
-<x-window ref="window" @closed="() => { $emit('closed'); destroyDom(); }">
-	<template #header>{{ $t('signup') }}</template>
-	<x-signup :auto-set="autoSet" @signup="onSignup"/>
-</x-window>
+<XModalWindow ref="dialog"
+	:width="366"
+	:height="500"
+	@close="$refs.dialog.close()"
+	@closed="$emit('closed')"
+>
+	<template #header>{{ $ts.signup }}</template>
+
+	<div class="_monolithic_">
+		<div class="_section">
+			<XSignup :auto-set="autoSet" @signup="onSignup"/>
+		</div>
+	</div>
+</XModalWindow>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../i18n';
-import XWindow from './window.vue';
+import { defineComponent } from 'vue';
+import XModalWindow from '@client/components/ui/modal-window.vue';
 import XSignup from './signup.vue';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		XSignup,
-		XWindow,
+		XModalWindow,
 	},
 
 	props: {
@@ -27,10 +34,12 @@ export default Vue.extend({
 		}
 	},
 
+	emits: ['done', 'closed'],
+
 	methods: {
 		onSignup(res) {
-			this.$emit('signup', res);
-			this.$refs.window.close();
+			this.$emit('done', res);
+			this.$refs.dialog.close();
 		}
 	}
 });

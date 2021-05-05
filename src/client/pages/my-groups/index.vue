@@ -1,70 +1,76 @@
 <template>
 <div class="">
-	<portal to="icon"><fa :icon="faUsers"/></portal>
-	<portal to="title">{{ $t('groups') }}</portal>
+	<div class="_section" style="padding: 0;">
+		<MkTab v-model:value="tab">
+			<option value="owned">{{ $ts.ownedGroups }}</option>
+			<option value="joined">{{ $ts.joinedGroups }}</option>
+			<option value="invites"><i class="fas fa-envelope-open-text"></i> {{ $ts.invites }}</option>
+		</MkTab>
+	</div>
 
-	<mk-button @click="create" primary style="margin: 0 auto var(--margin) auto;"><fa :icon="faPlus"/> {{ $t('createGroup') }}</mk-button>
+	<div class="_section">
+		<div class="_content" v-if="tab === 'owned'">
+			<MkButton @click="create" primary style="margin: 0 auto var(--margin) auto;"><i class="fas fa-plus"></i> {{ $ts.createGroup }}</MkButton>
 
-	<mk-container :body-togglable="true">
-		<template #header><fa :icon="faUsers"/> {{ $t('ownedGroups') }}</template>
-		<mk-pagination :pagination="ownedPagination" #default="{items}" ref="owned">
-			<div class="_frame" v-for="group in items" :key="group.id">
-				<div class="_title"><router-link :to="`/my/groups/${ group.id }`" class="_link">{{ group.name }}</router-link></div>
-				<div class="_content"><mk-avatars :user-ids="group.userIds"/></div>
-			</div>
-		</mk-pagination>
-	</mk-container>
-
-	<mk-container :body-togglable="true">
-		<template #header><fa :icon="faEnvelopeOpenText"/> {{ $t('invites') }}</template>
-		<mk-pagination :pagination="invitationPagination" #default="{items}" ref="invitations">
-			<div class="_frame" v-for="invitation in items" :key="invitation.id">
-				<div class="_title">{{ invitation.group.name }}</div>
-				<div class="_content"><mk-avatars :user-ids="invitation.group.userIds"/></div>
-				<div class="_footer">
-					<mk-button @click="acceptInvite(invitation)" primary inline><fa :icon="faCheck"/> {{ $t('accept') }}</mk-button>
-					<mk-button @click="rejectInvite(invitation)" primary inline><fa :icon="faBan"/> {{ $t('reject') }}</mk-button>
+			<MkPagination :pagination="ownedPagination" #default="{items}" ref="owned">
+				<div class="_card" v-for="group in items" :key="group.id">
+					<div class="_title"><MkA :to="`/my/groups/${ group.id }`" class="_link">{{ group.name }}</MkA></div>
+					<div class="_content"><MkAvatars :user-ids="group.userIds"/></div>
 				</div>
-			</div>
-		</mk-pagination>
-	</mk-container>
+			</MkPagination>
+		</div>
 
-	<mk-container :body-togglable="true">
-		<template #header><fa :icon="faUsers"/> {{ $t('joinedGroups') }}</template>
-		<mk-pagination :pagination="joinedPagination" #default="{items}" ref="joined">
-			<div class="_frame" v-for="group in items" :key="group.id">
-				<div class="_title">{{ group.name }}</div>
-				<div class="_content"><mk-avatars :user-ids="group.userIds"/></div>
-			</div>
-		</mk-pagination>
-	</mk-container>
+		<div class="_content" v-else-if="tab === 'joined'">
+			<MkPagination :pagination="joinedPagination" #default="{items}" ref="joined">
+				<div class="_card" v-for="group in items" :key="group.id">
+					<div class="_title">{{ group.name }}</div>
+					<div class="_content"><MkAvatars :user-ids="group.userIds"/></div>
+				</div>
+			</MkPagination>
+		</div>
+	
+		<div class="_content" v-else-if="tab === 'invites'">
+			<MkPagination :pagination="invitationPagination" #default="{items}" ref="invitations">
+				<div class="_card" v-for="invitation in items" :key="invitation.id">
+					<div class="_title">{{ invitation.group.name }}</div>
+					<div class="_content"><MkAvatars :user-ids="invitation.group.userIds"/></div>
+					<div class="_footer">
+						<MkButton @click="acceptInvite(invitation)" primary inline><i class="fas fa-check"></i> {{ $ts.accept }}</MkButton>
+						<MkButton @click="rejectInvite(invitation)" primary inline><i class="fas fa-ban"></i> {{ $ts.reject }}</MkButton>
+					</div>
+				</div>
+			</MkPagination>
+		</div>
+	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faUsers, faPlus, faEnvelopeOpenText } from '@fortawesome/free-solid-svg-icons';
-import MkPagination from '../../components/ui/pagination.vue';
-import MkButton from '../../components/ui/button.vue';
-import MkContainer from '../../components/ui/container.vue';
-import MkAvatars from '../../components/avatars.vue';
+import { defineComponent } from 'vue';
+import MkPagination from '@client/components/ui/pagination.vue';
+import MkButton from '@client/components/ui/button.vue';
+import MkContainer from '@client/components/ui/container.vue';
+import MkAvatars from '@client/components/avatars.vue';
+import MkTab from '@client/components/tab.vue';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	metaInfo() {
-		return {
-			title: this.$t('groups') as string,
-		};
-	},
-
+export default defineComponent({
 	components: {
 		MkPagination,
 		MkButton,
 		MkContainer,
+		MkTab,
 		MkAvatars,
 	},
 
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.groups,
+				icon: 'fas fa-users'
+			},
+			tab: 'owned',
 			ownedPagination: {
 				endpoint: 'users/groups/owned',
 				limit: 10,
@@ -77,38 +83,31 @@ export default Vue.extend({
 				endpoint: 'i/user-group-invites',
 				limit: 10,
 			},
-			faUsers, faPlus, faEnvelopeOpenText
 		};
 	},
 
 	methods: {
 		async create() {
-			const { canceled, result: name } = await this.$root.dialog({
-				title: this.$t('groupName'),
+			const { canceled, result: name } = await os.dialog({
+				title: this.$ts.groupName,
 				input: true
 			});
 			if (canceled) return;
-			await this.$root.api('users/groups/create', { name: name });
+			await os.api('users/groups/create', { name: name });
 			this.$refs.owned.reload();
-			this.$root.dialog({
-				type: 'success',
-				iconOnly: true, autoClose: true
-			});
+			os.success();
 		},
 		acceptInvite(invitation) {
-			this.$root.api('users/groups/invitations/accept', {
+			os.api('users/groups/invitations/accept', {
 				invitationId: invitation.id
 			}).then(() => {
-				this.$root.dialog({
-					type: 'success',
-					iconOnly: true, autoClose: true
-				});
+				os.success();
 				this.$refs.invitations.reload();
 				this.$refs.joined.reload();
 			});
 		},
 		rejectInvite(invitation) {
-			this.$root.api('users/groups/invitations/reject', {
+			os.api('users/groups/invitations/reject', {
 				invitationId: invitation.id
 			}).then(() => {
 				this.$refs.invitations.reload();

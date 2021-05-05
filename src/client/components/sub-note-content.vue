@@ -1,32 +1,30 @@
 <template>
 <div class="wrmlmaau">
 	<div class="body">
-		<span v-if="note.isHidden" style="opacity: 0.5">({{ $t('private') }})</span>
-		<span v-if="note.deletedAt" style="opacity: 0.5">({{ $t('deleted') }})</span>
-		<router-link class="reply" v-if="note.replyId" :to="`/notes/${note.replyId}`"><fa :icon="faReply"/></router-link>
-		<mfm v-if="note.text" :text="note.text" :author="note.user" :i="$store.state.i" :custom-emojis="note.emojis"/>
-		<router-link class="rp" v-if="note.renoteId" :to="`/notes/${note.renoteId}`">RN: ...</router-link>
+		<span v-if="note.isHidden" style="opacity: 0.5">({{ $ts.private }})</span>
+		<span v-if="note.deletedAt" style="opacity: 0.5">({{ $ts.deleted }})</span>
+		<MkA class="reply" v-if="note.replyId" :to="`/notes/${note.replyId}`"><i class="fas fa-reply"></i></MkA>
+		<Mfm v-if="note.text" :text="note.text" :author="note.user" :i="$i" :custom-emojis="note.emojis"/>
+		<MkA class="rp" v-if="note.renoteId" :to="`/notes/${note.renoteId}`">RN: ...</MkA>
 	</div>
 	<details v-if="note.files.length > 0">
 		<summary>({{ $t('withNFiles', { n: note.files.length }) }})</summary>
-		<x-media-list :media-list="note.files"/>
+		<XMediaList :media-list="note.files"/>
 	</details>
 	<details v-if="note.poll">
-		<summary>{{ $t('poll') }}</summary>
-		<x-poll :note="note"/>
+		<summary>{{ $ts.poll }}</summary>
+		<XPoll :note="note"/>
 	</details>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faReply } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../i18n';
+import { defineComponent } from 'vue';
 import XPoll from './poll.vue';
 import XMediaList from './media-list.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
+export default defineComponent({
 	components: {
 		XPoll,
 		XMediaList,
@@ -39,7 +37,6 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			faReply
 		};
 	}
 });

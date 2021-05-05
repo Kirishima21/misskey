@@ -1,32 +1,36 @@
 <template>
-<mk-textarea :value="text" readonly></mk-textarea>
+<MkTextarea :value="text" readonly></MkTextarea>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { TextBlock } from '@client/scripts/hpml/block';
+import { Hpml } from '@client/scripts/hpml/evaluator';
+import { defineComponent, PropType } from 'vue';
 import MkTextarea from '../ui/textarea.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		MkTextarea
 	},
 	props: {
-		value: {
+		block: {
+			type: Object as PropType<TextBlock>,
 			required: true
 		},
-		script: {
+		hpml: {
+			type: Object as PropType<Hpml>,
 			required: true
 		}
 	},
 	data() {
 		return {
-			text: this.script.interpolate(this.value.text),
+			text: this.hpml.interpolate(this.block.text),
 		};
 	},
 	watch: {
-		'script.vars': {
+		'hpml.vars': {
 			handler() {
-				this.text = this.script.interpolate(this.value.text);
+				this.text = this.hpml.interpolate(this.block.text);
 			},
 			deep: true
 		}

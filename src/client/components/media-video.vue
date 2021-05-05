@@ -1,28 +1,32 @@
 <template>
-<div class="icozogqfvdetwohsdglrbswgrejoxbdj" v-if="video.isSensitive && hide && !$store.state.device.alwaysShowNsfw" @click="hide = false">
+<div class="icozogqfvdetwohsdglrbswgrejoxbdj" v-if="hide" @click="hide = false">
 	<div>
-		<b><fa icon="exclamation-triangle"/> {{ $t('sensitive') }}</b>
-		<span>{{ $t('clickToShow') }}</span>
+		<b><i class="fas fa-exclamation-triangle"></i> {{ $ts.sensitive }}</b>
+		<span>{{ $ts.clickToShow }}</span>
 	</div>
 </div>
-<a class="kkjnbbplepmiyuadieoenjgutgcmtsvu" v-else
-	:href="video.url"
-	rel="nofollow noopener"
-	target="_blank"
-	:style="imageStyle"
-	:title="video.name"
->
-	<fa :icon="faPlayCircle"/>
-</a>
+<div class="kkjnbbplepmiyuadieoenjgutgcmtsvu" v-else>
+	<video
+		:poster="video.thumbnailUrl"
+		:title="video.name"
+		crossorigin="anonymous"
+		preload="none"
+		controls
+	>
+		<source 
+			:src="video.url" 
+			:type="video.type"
+		>
+	</video>
+	<i class="fas fa-eye-slash" @click="hide = true"></i>
+</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faPlayCircle } from '@fortawesome/free-regular-svg-icons';
-import i18n from '../i18n';
+import { defineComponent } from 'vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
+export default defineComponent({
 	props: {
 		video: {
 			type: Object,
@@ -32,31 +36,45 @@ export default Vue.extend({
 	data() {
 		return {
 			hide: true,
-			faPlayCircle
 		};
 	},
-	computed: {
-		imageStyle(): any {
-			return {
-				'background-image': `url(${this.video.thumbnailUrl})`
-			};
-		}
-	}
+	created() {
+		this.hide = (this.$store.state.nsfw === 'force') ? true : this.video.isSensitive && (this.$store.state.nsfw !== 'ignore');
+	},
 });
 </script>
 
 <style lang="scss" scoped>
 .kkjnbbplepmiyuadieoenjgutgcmtsvu {
-	display: flex;
-	justify-content: center;
-	align-items: center;
+	position: relative;
 
-	font-size: 3.5em;
-	overflow: hidden;
-	background-position: center;
-	background-size: cover;
-	width: 100%;
-	height: 100%;
+	> i {
+		display: block;
+		position: absolute;
+		border-radius: 6px;
+		background-color: var(--fg);
+		color: var(--accentLighten);
+		font-size: 14px;
+		opacity: .5;
+		padding: 3px 6px;
+		text-align: center;
+		cursor: pointer;
+		top: 12px;
+		right: 12px;
+	}
+
+	> video {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		font-size: 3.5em;
+		overflow: hidden;
+		background-position: center;
+		background-size: cover;
+		width: 100%;
+		height: 100%;
+	}
 }
 
 .icozogqfvdetwohsdglrbswgrejoxbdj {

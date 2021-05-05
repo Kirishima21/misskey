@@ -22,9 +22,9 @@ export const meta = {
 export default define(meta, async (ps, user, token) => {
 	const isSecure = token == null;
 
-	return await Users.pack(user, user, {
+	// ここで渡ってきている user はキャッシュされていて古い可能性もあるので id だけ渡す
+	return await Users.pack(user.id, user, {
 		detail: true,
-		includeHasUnreadNotes: true,
 		includeSecrets: isSecure
 	});
 });

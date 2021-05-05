@@ -1,5 +1,5 @@
 <template>
-<router-link :to="`/@${page.user.username}/pages/${page.name}`" class="vhpxefrj" tabindex="-1">
+<MkA :to="`/@${page.user.username}/pages/${page.name}`" class="vhpxefrj _block _isolated" tabindex="-1">
 	<div class="thumbnail" v-if="page.eyeCatchingImage" :style="`background-image: url('${page.eyeCatchingImage.thumbnailUrl}')`"></div>
 	<article>
 		<header>
@@ -8,43 +8,42 @@
 		<p v-if="page.summary" :title="page.summary">{{ page.summary.length > 85 ? page.summary.slice(0, 85) + '…' : page.summary }}</p>
 		<footer>
 			<img class="icon" :src="page.user.avatarUrl"/>
-			<p>{{ page.user | userName }}</p>
+			<p>{{ userName(page.user) }}</p>
 		</footer>
 	</article>
-</router-link>
+</MkA>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { userName } from '../filters/user';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		page: {
 			type: Object,
 			required: true
 		},
 	},
+	methods: {
+		userName
+	}
 });
 </script>
 
 <style lang="scss" scoped>
 .vhpxefrj {
 	display: block;
-	overflow: hidden;
-	width: 100%;
-	border: solid var(--lineWidth) var(--urlPreviewBorder);
-	border-radius: 4px;
-	overflow: hidden;
 
 	&:hover {
 		text-decoration: none;
-		border-color: var(--urlPreviewBorderHover);
+		color: var(--accent);
 	}
 
 	> .thumbnail {
-		position: absolute;
-		width: 100px;
-		height: 100%;
+		width: 100%;
+		height: 200px;
 		background-position: center;
 		background-size: cover;
 		display: flex;

@@ -1,9 +1,14 @@
-import Vue from 'vue';
-import { getScrollPosition, onScrollTop } from './scroll';
+import { markRaw } from 'vue';
+import * as os from '@client/os';
+import { onScrollTop, isTopVisible, getScrollPosition, getScrollContainer } from './scroll';
 
 const SECOND_FETCH_LIMIT = 30;
 
+// reversed: items 配列の中身を逆順にする(新しい方が最後)
+
 export default (opts) => ({
+	emits: ['queue'],
+
 	data() {
 		return {
 			items: [],
@@ -13,14 +18,14 @@ export default (opts) => ({
 			moreFetching: false,
 			inited: false,
 			more: false,
-			backed: false,
+			backed: false, // 遡り中か否か
 			isBackTop: false,
 		};
 	},
 
 	computed: {
 		empty(): boolean {
-			return this.items.length == 0 && !this.fetching && this.inited;
+			return this.items.length === 0 && !this.fetching && this.inited;
 		},
 
 		error(): boolean {
@@ -29,36 +34,49 @@ export default (opts) => ({
 	},
 
 	watch: {
-		pagination() {
-			this.init();
+		pagination: {
+			handler() {
+				this.init();
+			},
+			deep: true
 		},
 
-		queue() {
-			this.$emit('queue', this.queue.length);
+		queue: {
+			handler(a, b) {
+				if (a.length === 0 && b.length === 0) return;
+				this.$emit('queue', this.queue.length);
+			},
+			deep: true
 		}
 	},
 
 	created() {
 		opts.displayLimit = opts.displayLimit || 30;
 		this.init();
+	},
 
-		this.$on('hook:activated', () => {
-			this.isBackTop = false;
-		});
+	activated() {
+		this.isBackTop = false;
+	},
 
-		this.$on('hook:deactivated', () => {
-			this.isBackTop = window.scrollY === 0;
-		});
+	deactivated() {
+		this.isBackTop = window.scrollY === 0;
 	},
 
 	methods: {
-		updateItem(i, item) {
-			Vue.set((this as any).items, i, item);
-		},
-
 		reload() {
 			this.items = [];
 			this.init();
+		},
+
+		replaceItem(finder, data) {
+			const i = this.items.findIndex(finder);
+			this.items[i] = data;
+		},
+
+		removeItem(finder) {
+			const i = this.items.findIndex(finder);
+			this.items.splice(i, 1);
 		},
 
 		async init() {
@@ -67,11 +85,17 @@ export default (opts) => ({
 			if (opts.before) opts.before(this);
 			let params = typeof this.pagination.params === 'function' ? this.pagination.params(true) : this.pagination.params;
 			if (params && params.then) params = await params;
+			if (params === null) return;
 			const endpoint = typeof this.pagination.endpoint === 'function' ? this.pagination.endpoint() : this.pagination.endpoint;
-			await this.$root.api(endpoint, {
+			await os.api(endpoint, {
 				...params,
 				limit: this.pagination.noPaging ? (this.pagination.limit || 10) : (this.pagination.limit || 10) + 1,
 			}).then(items => {
+				for (let i = 0; i < items.length; i++) {
+					const item = items[i];
+					markRaw(item);
+					if (i === 3) item._shouldInsertAd_ = true;
+				}
 				if (!this.pagination.noPaging && (items.length > (this.pagination.limit || 10))) {
 					items.pop();
 					this.items = this.pagination.reversed ? [...items].reverse() : items;
@@ -91,23 +115,59 @@ export default (opts) => ({
 		},
 
 		async fetchMore() {
-			if (!this.more || this.moreFetching || this.items.length === 0) return;
+			if (!this.more || this.fetching || this.moreFetching || this.items.length === 0) return;
 			this.moreFetching = true;
 			this.backed = true;
 			let params = typeof this.pagination.params === 'function' ? this.pagination.params(false) : this.pagination.params;
 			if (params && params.then) params = await params;
 			const endpoint = typeof this.pagination.endpoint === 'function' ? this.pagination.endpoint() : this.pagination.endpoint;
-			await this.$root.api(endpoint, {
+			await os.api(endpoint, {
 				...params,
 				limit: SECOND_FETCH_LIMIT + 1,
 				...(this.pagination.offsetMode ? {
 					offset: this.offset,
-				} : this.pagination.reversed ? {
-					sinceId: this.items[0].id,
 				} : {
-					untilId: this.items[this.items.length - 1].id,
+					untilId: this.pagination.reversed ? this.items[0].id : this.items[this.items.length - 1].id,
 				}),
 			}).then(items => {
+				for (let i = 0; i < items.length; i++) {
+					const item = items[i];
+					markRaw(item);
+					if (i === 10) item._shouldInsertAd_ = true;
+				}
+				if (items.length > SECOND_FETCH_LIMIT) {
+					items.pop();
+					this.items = this.pagination.reversed ? [...items].reverse().concat(this.items) : this.items.concat(items);
+					this.more = true;
+				} else {
+					this.items = this.pagination.reversed ? [...items].reverse().concat(this.items) : this.items.concat(items);
+					this.more = false;
+				}
+				this.offset += items.length;
+				this.moreFetching = false;
+			}, e => {
+				this.moreFetching = false;
+			});
+		},
+
+		async fetchMoreFeature() {
+			if (!this.more || this.fetching || this.moreFetching || this.items.length === 0) return;
+			this.moreFetching = true;
+			let params = typeof this.pagination.params === 'function' ? this.pagination.params(false) : this.pagination.params;
+			if (params && params.then) params = await params;
+			const endpoint = typeof this.pagination.endpoint === 'function' ? this.pagination.endpoint() : this.pagination.endpoint;
+			await os.api(endpoint, {
+				...params,
+				limit: SECOND_FETCH_LIMIT + 1,
+				...(this.pagination.offsetMode ? {
+					offset: this.offset,
+				} : {
+					sinceId: this.pagination.reversed ? this.items[0].id : this.items[this.items.length - 1].id,
+				}),
+			}).then(items => {
+				for (const item of items) {
+					markRaw(item);
+				}
 				if (items.length > SECOND_FETCH_LIMIT) {
 					items.pop();
 					this.items = this.pagination.reversed ? [...items].reverse().concat(this.items) : this.items.concat(items);
@@ -124,34 +184,47 @@ export default (opts) => ({
 		},
 
 		prepend(item) {
-			const isTop = this.isBackTop || (document.body.contains(this.$el) && (getScrollPosition(this.$el) === 0));
-
-			if (isTop) {
-				// Prepend the item
-				this.items.unshift(item);
-
-				// オーバーフローしたら古いアイテムは捨てる
-				if (this.items.length >= opts.displayLimit) {
-					this.items = this.items.slice(0, opts.displayLimit);
-					this.more = true;
-				}
-			} else {
-				this.queue.push(item);
-				onScrollTop(this.$el, () => {
-					for (const item of this.queue) {
-						this.prepend(item);
+			if (this.pagination.reversed) {
+				const container = getScrollContainer(this.$el);
+				const pos = getScrollPosition(this.$el);
+				const viewHeight = container.clientHeight;
+				const height = container.scrollHeight;
+				const isBottom = (pos + viewHeight > height - 32);
+				if (isBottom) {
+					// オーバーフローしたら古いアイテムは捨てる
+					if (this.items.length >= opts.displayLimit) {
+						this.items = this.items.slice(-opts.displayLimit);
+						this.more = true;
 					}
-					this.queue = [];
-				});
+				}
+				this.items.push(item);
+				// TODO
+			} else {
+				const isTop = this.isBackTop || (document.body.contains(this.$el) && isTopVisible(this.$el));
+
+				if (isTop) {
+					// Prepend the item
+					this.items.unshift(item);
+
+					// オーバーフローしたら古いアイテムは捨てる
+					if (this.items.length >= opts.displayLimit) {
+						this.items = this.items.slice(0, opts.displayLimit);
+						this.more = true;
+					}
+				} else {
+					this.queue.push(item);
+					onScrollTop(this.$el, () => {
+						for (const item of this.queue) {
+							this.prepend(item);
+						}
+						this.queue = [];
+					});
+				}
 			}
 		},
 
 		append(item) {
 			this.items.push(item);
-		},
-
-		remove(find) {
-			this.items = this.items.filter(x => !find(x));
 		},
 	}
 });

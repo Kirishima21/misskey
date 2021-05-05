@@ -1,87 +1,73 @@
 <template>
-<div class="iroscrza" :class="{ center: page.alignCenter, serif: page.font === 'serif' }" v-if="script">
-	<x-block v-for="child in page.content" :value="child" @input="v => updateBlock(v)" :page="page" :script="script" :key="child.id" :h="2"/>
+<div class="iroscrza" :class="{ center: page.alignCenter, serif: page.font === 'serif' }" v-if="hpml">
+	<XBlock v-for="child in page.content" :block="child" :hpml="hpml" :key="child.id" :h="2"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../../i18n';
-import { faHeart as faHeartS } from '@fortawesome/free-solid-svg-icons';
-import { faHeart } from '@fortawesome/free-regular-svg-icons';
+import { defineComponent, onMounted, nextTick, onUnmounted, PropType } from 'vue';
+import { parse } from '@syuilo/aiscript';
 import XBlock from './page.block.vue';
-import { ASEvaluator } from '../../scripts/aiscript/evaluator';
-import { collectPageVars } from '../../scripts/collect-page-vars';
-import { url } from '../../config';
+import { Hpml } from '@client/scripts/hpml/evaluator';
+import { url } from '@client/config';
+import { $i } from '@client/account';
+import { defaultStore } from '@client/store';
 
-class Script {
-	public aiScript: ASEvaluator;
-	private onError: any;
-	public vars: Record<string, any>;
-	public page: Record<string, any>;
-
-	constructor(page, aiScript, onError) {
-		this.page = page;
-		this.aiScript = aiScript;
-		this.onError = onError;
-		this.eval();
-	}
-
-	public eval() {
-		try {
-			this.vars = this.aiScript.evaluateVars();
-		} catch (e) {
-			this.onError(e);
-		}
-	}
-
-	public interpolate(str: string) {
-		if (str == null) return null;
-		return str.replace(/{(.+?)}/g, match => {
-			const v = this.vars[match.slice(1, -1).trim()];
-			return v == null ? 'NULL' : v.toString();
-		});
-	}
-}
-
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		XBlock
 	},
-
 	props: {
 		page: {
-			type: Object,
+			type: Object as PropType<Record<string, any>>,
 			required: true
 		},
 	},
+	setup(props, ctx) {
 
-	data() {
+		const hpml = new Hpml(props.page, {
+			randomSeed: Math.random(),
+			visitor: $i,
+			url: url,
+			enableAiScript: !defaultStore.state.disablePagesScript
+		});
+
+		onMounted(() => {
+			nextTick(() => {
+				if (props.page.script && hpml.aiscript) {
+					let ast;
+					try {
+						ast = parse(props.page.script);
+					} catch (e) {
+						console.error(e);
+						/*os.dialog({
+							type: 'error',
+							text: 'Syntax error :('
+						});*/
+						return;
+					}
+					hpml.aiscript.exec(ast).then(() => {
+						hpml.eval();
+					}).catch(e => {
+						console.error(e);
+						/*os.dialog({
+							type: 'error',
+							text: e
+						});*/
+					});
+				} else {
+					hpml.eval();
+				}
+			});
+			onUnmounted(() => {
+				if (hpml.aiscript) hpml.aiscript.abort();
+			});
+		});
+
 		return {
-			script: null,
-			faHeartS, faHeart
+			hpml,
 		};
 	},
-
-	created() {
-		const pageVars = this.getPageVars();
-		this.script = new Script(this.page, new ASEvaluator(this.page.variables, pageVars, {
-			randomSeed: Math.random(),
-			visitor: this.$store.state.i,
-			page: this.page,
-			url: url
-		}), e => {
-			console.dir(e);
-		});
-	},
-
-	methods: {
-		getPageVars() {
-			return collectPageVars(this.page.content);
-		},
-	}
 });
 </script>
 

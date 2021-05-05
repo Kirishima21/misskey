@@ -1,7 +1,8 @@
 import $ from 'cafy';
+import config from '@/config';
 import define from '../../define';
 import { Instances } from '../../../../models';
-import { fetchMeta } from '../../../../misc/fetch-meta';
+import { fetchMeta } from '@/misc/fetch-meta';
 
 export const meta = {
 	tags: ['federation'],
@@ -49,6 +50,16 @@ export const meta = {
 
 		sort: {
 			validator: $.optional.str,
+		}
+	},
+
+	res: {
+		type: 'array' as const,
+		optional: false as const, nullable: false as const,
+		items: {
+			type: 'object' as const,
+			optional: false as const, nullable: false as const,
+			ref: 'FederationInstance'
 		}
 	}
 };
@@ -129,7 +140,7 @@ export default define(meta, async (ps, me) => {
 	}
 
 	if (ps.host) {
-		query.andWhere('instance.host like :host', { host: '%' + ps.host.toLowerCase() + '%' })
+		query.andWhere('instance.host like :host', { host: '%' + ps.host.toLowerCase() + '%' });
 	}
 
 	const instances = await query.take(ps.limit!).skip(ps.offset).getMany();

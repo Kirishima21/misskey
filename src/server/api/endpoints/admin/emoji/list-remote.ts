@@ -1,13 +1,14 @@
 import $ from 'cafy';
 import define from '../../../define';
 import { Emojis } from '../../../../../models';
-import { toPuny } from '../../../../../misc/convert-host';
+import { toPuny } from '@/misc/convert-host';
 import { makePaginationQuery } from '../../../common/make-pagination-query';
-import { ID } from '../../../../../misc/cafy-id';
+import { ID } from '@/misc/cafy-id';
 
 export const meta = {
 	desc: {
-		'ja-JP': 'カスタム絵文字を取得します。'
+		'ja-JP': 'リモートのカスタム絵文字一覧を取得します。',
+		'en-US': 'Gets a list of remote custom emojis.'
 	},
 
 	tags: ['admin'],
@@ -16,6 +17,11 @@ export const meta = {
 	requireModerator: true,
 
 	params: {
+		query: {
+			validator: $.optional.nullable.str,
+			default: null as any
+		},
+
 		host: {
 			validator: $.optional.nullable.str,
 			default: null as any
@@ -33,6 +39,52 @@ export const meta = {
 		untilId: {
 			validator: $.optional.type(ID),
 		}
+	},
+
+	res: {
+		type: 'array' as const,
+		optional: false as const, nullable: false as const,
+		items: {
+			type: 'object' as const,
+			optional: false as const, nullable: false as const,
+			properties: {
+				id: {
+					type: 'string' as const,
+					optional: false as const, nullable: false as const,
+					format: 'id',
+					description: 'The unique identifier for this Emoji.'
+				},
+				aliases: {
+					type: 'array' as const,
+					optional: false as const, nullable: false as const,
+					description: 'List to make it easier to be displayed as a candidate when entering emoji.',
+					items: {
+						type: 'string' as const,
+						optional: false as const, nullable: false as const
+					}
+				},
+				name: {
+					type: 'string' as const,
+					optional: false as const, nullable: false as const,
+					description: 'Official name of custom emoji.'
+				},
+				category: {
+					type: 'string' as const,
+					optional: false as const, nullable: true as const,
+					description: 'Names categorized in the emoji list.'
+				},
+				host: {
+					type: 'string' as const,
+					optional: false as const, nullable: true as const,
+					description: 'If it is another server, the FQDN will be returned here.'
+				},
+				url: {
+					type: 'string' as const,
+					optional: false as const, nullable: false as const,
+					description: 'Image URL of emoji.'
+				}
+			}
+		}
 	}
 };
 
@@ -45,18 +97,14 @@ export default define(meta, async (ps) => {
 		q.andWhere(`emoji.host = :host`, { host: toPuny(ps.host) });
 	}
 
+	if (ps.query) {
+		q.andWhere('emoji.name like :query', { query: '%' + ps.query + '%' });
+	}
+
 	const emojis = await q
-		.orderBy('emoji.category', 'ASC')
-		.orderBy('emoji.name', 'ASC')
+		.orderBy('emoji.id', 'DESC')
 		.take(ps.limit!)
 		.getMany();
 
-	return emojis.map(e => ({
-		id: e.id,
-		name: e.name,
-		category: e.category,
-		aliases: e.aliases,
-		host: e.host,
-		url: e.url
-	}));
+	return Emojis.packMany(emojis);
 });

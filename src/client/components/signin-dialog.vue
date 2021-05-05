@@ -1,22 +1,25 @@
 <template>
-<x-window ref="window" @closed="() => { $emit('closed'); destroyDom(); }">
-	<template #header>{{ $t('login') }}</template>
-	<mk-signin :auto-set="autoSet" @login="onLogin"/>
-</x-window>
+<XModalWindow ref="dialog"
+	:width="370"
+	:height="400"
+	@close="$refs.dialog.close()"
+	@closed="$emit('closed')"
+>
+	<template #header>{{ $ts.login }}</template>
+
+	<MkSignin :auto-set="autoSet" @login="onLogin"/>
+</XModalWindow>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../i18n';
-import XWindow from './window.vue';
+import { defineComponent } from 'vue';
+import XModalWindow from '@client/components/ui/modal-window.vue';
 import MkSignin from './signin.vue';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		MkSignin,
-		XWindow,
+		XModalWindow,
 	},
 
 	props: {
@@ -27,10 +30,12 @@ export default Vue.extend({
 		}
 	},
 
+	emits: ['done', 'closed'],
+
 	methods: {
 		onLogin(res) {
-			this.$emit('login', res);
-			this.$refs.window.close();
+			this.$emit('done', res);
+			this.$refs.dialog.close();
 		}
 	}
 });

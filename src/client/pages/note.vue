@@ -1,55 +1,77 @@
 <template>
-<div class="mk-note-page">
-	<portal to="avatar" v-if="note"><mk-avatar class="avatar" :user="note.user" :disable-preview="true"/></portal>
-	<portal to="title" v-if="note">
-		<mfm 
-			:text="$t('noteOf', { user: note.user.name || note.user.username })"
-			:plain="true" :nowrap="true" :custom-emojis="note.user.emojis" :is-note="false"
-		/>
-	</portal>
+<div class="fcuexfpr _root">
+	<transition name="fade" mode="out-in">
+		<div v-if="note" class="note">
+			<div class="_gap" v-if="showNext">
+				<XNotes class="_content" :pagination="next" :no-gap="true"/>
+			</div>
 
-	<div v-if="note">
-		<button class="_panel _button" v-if="hasNext && !showNext" @click="showNext = true" style="margin: 0 auto var(--margin) auto;"><fa :icon="faChevronUp"/></button>
-		<x-notes v-if="showNext" ref="next" :pagination="next"/>
-		<hr v-if="showNext"/>
+			<div class="main _gap">
+				<MkButton v-if="!showNext && hasNext" class="load next" @click="showNext = true"><i class="fas fa-chevron-up"></i></MkButton>
+				<div class="_content _gap">
+					<MkRemoteCaution v-if="note.user.host != null" :href="note.url || note.uri" class="_gap"/>
+					<XNoteDetailed v-model:note="note" :key="note.id" class="_gap"/>
+				</div>
+				<div class="_content clips _gap" v-if="clips && clips.length > 0">
+					<div class="title">{{ $ts.clip }}</div>
+					<MkA v-for="item in clips" :key="item.id" :to="`/clips/${item.id}`" class="item _panel _gap">
+						<b>{{ item.name }}</b>
+						<div v-if="item.description" class="description">{{ item.description }}</div>
+						<div class="user">
+							<MkAvatar :user="item.user" class="avatar" :show-indicator="true"/> <MkUserName :user="item.user" :nowrap="false"/>
+						</div>
+					</MkA>
+				</div>
+				<MkButton v-if="!showPrev && hasPrev" class="load prev" @click="showPrev = true"><i class="fas fa-chevron-down"></i></MkButton>
+			</div>
 
-		<mk-remote-caution v-if="note.user.host != null" :href="note.uri" style="margin-bottom: var(--margin)"/>
-		<x-note :note="note" :key="note.id" :detail="true"/>
-		<div v-if="error">
-			<mk-error @retry="fetch()"/>
+			<div class="_gap" v-if="showPrev">
+				<XNotes class="_content" :pagination="prev" :no-gap="true"/>
+			</div>
 		</div>
-
-		<button class="_panel _button" v-if="hasPrev && !showPrev" @click="showPrev = true" style="margin: var(--margin) auto 0 auto;"><fa :icon="faChevronDown"/></button>
-		<hr v-if="showPrev"/>
-		<x-notes v-if="showPrev" ref="prev" :pagination="prev" style="margin-top: var(--margin);"/>
-	</div>
+		<MkError v-else-if="error" @retry="fetch()"/>
+		<MkLoading v-else/>
+	</transition>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faChevronUp, faChevronDown } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../i18n';
-import Progress from '../scripts/loading';
-import XNote from '../components/note.vue';
-import XNotes from '../components/notes.vue';
-import MkRemoteCaution from '../components/remote-caution.vue';
+import { computed, defineComponent } from 'vue';
+import XNote from '@client/components/note.vue';
+import XNoteDetailed from '@client/components/note-detailed.vue';
+import XNotes from '@client/components/notes.vue';
+import MkRemoteCaution from '@client/components/remote-caution.vue';
+import MkButton from '@client/components/ui/button.vue';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	i18n,
-	metaInfo() {
-		return {
-			title: this.$t('note') as string
-		};
-	},
+export default defineComponent({
 	components: {
 		XNote,
+		XNoteDetailed,
 		XNotes,
 		MkRemoteCaution,
+		MkButton,
+	},
+	props: {
+		noteId: {
+			type: String,
+			required: true
+		}
 	},
 	data() {
 		return {
+			[symbols.PAGE_INFO]: computed(() => this.note ? {
+				title: this.$ts.note,
+				avatar: this.note.user,
+				path: `/notes/${this.note.id}`,
+				share: {
+					title: this.$t('noteOf', { user: this.note.user.name }),
+					text: this.note.text,
+				},
+			} : null),
 			note: null,
+			clips: null,
 			hasPrev: false,
 			hasNext: false,
 			showPrev: false,
@@ -72,43 +94,103 @@ export default Vue.extend({
 					sinceId: this.note.id,
 				})
 			},
-			faChevronUp, faChevronDown
 		};
 	},
 	watch: {
-		$route: 'fetch'
+		noteId: 'fetch'
 	},
 	created() {
 		this.fetch();
 	},
 	methods: {
 		fetch() {
-			Progress.start();
-			this.$root.api('notes/show', {
-				noteId: this.$route.params.note
+			this.note = null;
+			os.api('notes/show', {
+				noteId: this.noteId
 			}).then(note => {
 				Promise.all([
-					this.$root.api('users/notes', {
+					os.api('notes/clips', {
+						noteId: note.id,
+					}),
+					os.api('users/notes', {
 						userId: note.userId,
 						untilId: note.id,
 						limit: 1,
 					}),
-					this.$root.api('users/notes', {
+					os.api('users/notes', {
 						userId: note.userId,
 						sinceId: note.id,
 						limit: 1,
 					}),
-				]).then(([prev, next]) => {
+				]).then(([clips, prev, next]) => {
+					this.clips = clips;
 					this.hasPrev = prev.length !== 0;
 					this.hasNext = next.length !== 0;
 					this.note = note;
 				});
 			}).catch(e => {
 				this.error = e;
-			}).finally(() => {
-				Progress.done();
 			});
 		}
 	}
 });
 </script>
+
+<style lang="scss" scoped>
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 0.125s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+	opacity: 0;
+}
+
+.fcuexfpr {
+	> .note {
+		> .main {
+			> .load {
+				min-width: 0;
+				margin: 0 auto;
+				border-radius: 999px;
+
+				&.next {
+					margin-bottom: var(--margin);
+				}
+
+				&.prev {
+					margin-top: var(--margin);
+				}
+			}
+
+			> .clips {
+				> .title {
+					font-weight: bold;
+					padding: 12px;
+				}
+
+				> .item {
+					display: block;
+					padding: 16px;
+
+					> .description {
+						padding: 8px 0;
+					}
+
+					> .user {
+						$height: 32px;
+						padding-top: 16px;
+						border-top: solid 0.5px var(--divider);
+						line-height: $height;
+
+						> .avatar {
+							width: $height;
+							height: $height;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+</style>

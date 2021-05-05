@@ -1,8 +1,8 @@
 import * as Router from '@koa/router';
 
-import config from '../config';
-import parseAcct from '../misc/acct/parse';
-import Acct from '../misc/acct/type';
+import config from '@/config';
+import parseAcct from '@/misc/acct/parse';
+import Acct from '@/misc/acct/type';
 import { links } from './nodeinfo';
 import { escapeAttribute, escapeValue } from '../prelude/xml';
 import { Users } from '../models';
@@ -19,7 +19,7 @@ const XRD = (...x: { element: string, value?: string, attributes?: Record<string
 		typeof value === 'string' ? `>${escapeValue(value)}</${element}` : '/'
 	}>`).reduce((a, c) => a + c, '')}</XRD>`;
 
-const allPath = '/.well-known/*';
+const allPath = '/.well-known/(.*)';
 const webFingerPath = '/.well-known/webfinger';
 const jrd = 'application/jrd+json';
 const xrd = 'application/xrd+xml';
@@ -60,6 +60,11 @@ router.get('/.well-known/host-meta.json', async ctx => {
 router.get('/.well-known/nodeinfo', async ctx => {
 	ctx.body = { links };
 });
+
+/* TODO
+router.get('/.well-known/change-password', async ctx => {
+});
+*/
 
 router.get(webFingerPath, async ctx => {
 	const fromId = (id: User['id']): Record<string, any> => ({

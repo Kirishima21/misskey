@@ -1,37 +1,32 @@
 <template>
 <div class="mk-group-page">
-	<portal to="icon"><fa :icon="faUsers"/></portal>
-	<portal to="title">{{ group.name }}</portal>
-
 	<transition name="zoom" mode="out-in">
-		<div v-if="group" class="_card">
+		<div v-if="group" class="_section">
 			<div class="_content">
-				<mk-button inline @click="renameGroup()">{{ $t('rename') }}</mk-button>
-				<mk-button inline @click="transfer()">{{ $t('transfer') }}</mk-button>
-				<mk-button inline @click="deleteGroup()">{{ $t('delete') }}</mk-button>
+				<MkButton inline @click="invite()">{{ $ts.invite }}</MkButton>
+				<MkButton inline @click="renameGroup()">{{ $ts.rename }}</MkButton>
+				<MkButton inline @click="transfer()">{{ $ts.transfer }}</MkButton>
+				<MkButton inline @click="deleteGroup()">{{ $ts.delete }}</MkButton>
 			</div>
 		</div>
 	</transition>
 
 	<transition name="zoom" mode="out-in">
-		<div v-if="group" class="_card members">
-			<div class="_title">{{ $t('members') }}</div>
+		<div v-if="group" class="_section members _gap">
+			<div class="_title">{{ $ts.members }}</div>
 			<div class="_content">
 				<div class="users">
-					<div class="user" v-for="user in users" :key="user.id">
-						<mk-avatar :user="user" class="avatar"/>
+					<div class="user _panel" v-for="user in users" :key="user.id">
+						<MkAvatar :user="user" class="avatar" :show-indicator="true"/>
 						<div class="body">
-							<mk-user-name :user="user" class="name"/>
-							<mk-acct :user="user" class="acct"/>
+							<MkUserName :user="user" class="name"/>
+							<MkAcct :user="user" class="acct"/>
 						</div>
 						<div class="action">
-							<button class="_button" @click="removeUser(user)"><fa :icon="faTimes"/></button>
+							<button class="_button" @click="removeUser(user)"><i class="fas fa-times"></i></button>
 						</div>
 					</div>
 				</div>
-			</div>
-			<div class="_footer">
-				<mk-button inline @click="invite()">{{ $t('invite') }}</mk-button>
 			</div>
 		</div>
 	</transition>
@@ -39,36 +34,37 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faTimes, faUsers } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../../i18n';
-import Progress from '../../scripts/loading';
-import MkButton from '../../components/ui/button.vue';
-import MkUserSelect from '../../components/user-select.vue';
+import { computed, defineComponent } from 'vue';
+import Progress from '@client/scripts/loading';
+import MkButton from '@client/components/ui/button.vue';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	i18n,
-
-	metaInfo() {
-		return {
-			title: this.group ? `${this.group.name} | ${this.$t('manageGroups')}` : this.$t('manageGroups')
-		};
-	},
-
+export default defineComponent({
 	components: {
 		MkButton
 	},
 
+	props: {
+		groupId: {
+			type: String,
+			required: true,
+		},
+	},
+
 	data() {
 		return {
+			[symbols.PAGE_INFO]: computed(() => this.group ? {
+				title: this.group.name,
+				icon: 'fas fa-users',
+			} : null),
 			group: null,
 			users: [],
-			faTimes, faUsers
 		};
 	},
 
 	watch: {
-		$route: 'fetch'
+		groupId: 'fetch',
 	},
 
 	created() {
@@ -78,11 +74,11 @@ export default Vue.extend({
 	methods: {
 		fetch() {
 			Progress.start();
-			this.$root.api('users/groups/show', {
-				groupId: this.$route.params.group
+			os.api('users/groups/show', {
+				groupId: this.groupId
 			}).then(group => {
 				this.group = group;
-				this.$root.api('users/show', {
+				os.api('users/show', {
 					userIds: this.group.userIds
 				}).then(users => {
 					this.users = users;
@@ -92,26 +88,16 @@ export default Vue.extend({
 		},
 
 		invite() {
-			this.$root.new(MkUserSelect, {}).$once('selected', user => {
-				this.$root.api('users/groups/invite', {
+			os.selectUser().then(user => {
+				os.apiWithDialog('users/groups/invite', {
 					groupId: this.group.id,
 					userId: user.id
-				}).then(() => {
-					this.$root.dialog({
-						type: 'success',
-						iconOnly: true, autoClose: true
-					});
-				}).catch(e => {
-					this.$root.dialog({
-						type: 'error',
-						text: e
-					});
 				});
 			});
 		},
 
 		removeUser(user) {
-			this.$root.api('users/groups/pull', {
+			os.api('users/groups/pull', {
 				groupId: this.group.id,
 				userId: user.id
 			}).then(() => {
@@ -120,15 +106,15 @@ export default Vue.extend({
 		},
 
 		async renameGroup() {
-			const { canceled, result: name } = await this.$root.dialog({
-				title: this.$t('groupName'),
+			const { canceled, result: name } = await os.dialog({
+				title: this.$ts.groupName,
 				input: {
 					default: this.group.name
 				}
 			});
 			if (canceled) return;
 
-			await this.$root.api('users/groups/update', {
+			await os.api('users/groups/update', {
 				groupId: this.group.id,
 				name: name
 			});
@@ -137,38 +123,24 @@ export default Vue.extend({
 		},
 
 		transfer() {
-			this.$root.new(MkUserSelect, {}).$once('selected', user => {
-				this.$root.api('users/groups/transfer', {
+			os.selectUser().then(user => {
+				os.apiWithDialog('users/groups/transfer', {
 					groupId: this.group.id,
 					userId: user.id
-				}).then(() => {
-					this.$root.dialog({
-						type: 'success',
-						iconOnly: true, autoClose: true
-					});
-				}).catch(e => {
-					this.$root.dialog({
-						type: 'error',
-						text: e
-					});
 				});
 			});
 		},
 
 		async deleteGroup() {
-			const { canceled } = await this.$root.dialog({
+			const { canceled } = await os.dialog({
 				type: 'warning',
 				text: this.$t('removeAreYouSure', { x: this.group.name }),
 				showCancelButton: true
 			});
 			if (canceled) return;
 
-			await this.$root.api('users/groups/delete', {
+			await os.apiWithDialog('users/groups/delete', {
 				groupId: this.group.id
-			});
-			this.$root.dialog({
-				type: 'success',
-				iconOnly: true, autoClose: true
 			});
 			this.$router.push('/my/groups');
 		}
@@ -180,13 +152,11 @@ export default Vue.extend({
 .mk-group-page {
 	> .members {
 		> ._content {
-			max-height: 400px;
-			overflow: auto;
-
 			> .users {
 				> .user {
 					display: flex;
 					align-items: center;
+					padding: 16px;
 
 					> .avatar {
 						width: 50px;

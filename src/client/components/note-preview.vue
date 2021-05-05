@@ -1,15 +1,15 @@
 <template>
-<div class="yohlumlkhizgfkvvscwfcrcggkotpvry">
-	<mk-avatar class="avatar" :user="note.user"/>
+<div class="yohlumlk" v-size="{ min: [350, 500] }">
+	<MkAvatar class="avatar" :user="note.user"/>
 	<div class="main">
-		<x-note-header class="header" :note="note" :mini="true"/>
+		<XNoteHeader class="header" :note="note" :mini="true"/>
 		<div class="body">
 			<p v-if="note.cw != null" class="cw">
 				<span class="text" v-if="note.cw != ''">{{ note.cw }}</span>
-				<x-cw-button v-model="showContent" :note="note"/>
+				<XCwButton v-model:value="showContent" :note="note"/>
 			</p>
 			<div class="content" v-show="note.cw == null || showContent">
-				<x-sub-note-content class="text" :note="note"/>
+				<XSubNote-content class="text" :note="note"/>
 			</div>
 		</div>
 	</div>
@@ -17,12 +17,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import XNoteHeader from './note-header.vue';
 import XSubNoteContent from './sub-note-content.vue';
 import XCwButton from './cw-button.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		XNoteHeader,
 		XSubNoteContent,
@@ -45,30 +46,23 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
-.yohlumlkhizgfkvvscwfcrcggkotpvry {
+.yohlumlk {
 	display: flex;
 	margin: 0;
 	padding: 0;
-	overflow: hidden;
-	font-size: 10px;
+	overflow: clip;
+	font-size: 0.95em;
 
-	@media (min-width: 350px) {
-		font-size: 12px;
-	}
-
-	@media (min-width: 500px) {
-		font-size: 14px;
-	}
-
-	> .avatar {
-
-		@media (min-width: 350px) {
+	&.min-width_350px {
+		> .avatar {
 			margin: 0 10px 0 0;
 			width: 44px;
 			height: 44px;
 		}
+	}
 
-		@media (min-width: 500px) {
+	&.min-width_500px {
+		> .avatar {
 			margin: 0 12px 0 0;
 			width: 48px;
 			height: 48px;
@@ -100,7 +94,6 @@ export default Vue.extend({
 				margin: 0;
 				padding: 0;
 				overflow-wrap: break-word;
-				color: var(--noteText);
 
 				> .text {
 					margin-right: 8px;
@@ -112,7 +105,6 @@ export default Vue.extend({
 					cursor: default;
 					margin: 0;
 					padding: 0;
-					color: var(--subNoteText);
 				}
 			}
 		}

@@ -1,12 +1,13 @@
 <template>
-<x-draggable tag="div" :list="blocks" handle=".drag-handle" :group="{ name: 'blocks' }" animation="150" swap-threshold="0.5">
-	<component v-for="block in blocks" :is="'x-' + block.type" :value="block" @input="updateItem" @remove="() => removeItem(block)" :key="block.id" :ai-script="aiScript"/>
-</x-draggable>
+<XDraggable tag="div" v-model="blocks" item-key="id" handle=".drag-handle" :group="{ name: 'blocks' }" animation="150" swap-threshold="0.5">
+	<template #item="{element}">
+		<component :is="'x-' + element.type" :value="element" @update:value="updateItem" @remove="() => removeItem(element)" :hpml="hpml"/>
+	</template>
+</XDraggable>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import * as XDraggable from 'vuedraggable';
+import { defineComponent, defineAsyncComponent } from 'vue';
 import XSection from './els/page-editor.el.section.vue';
 import XText from './els/page-editor.el.text.vue';
 import XTextarea from './els/page-editor.el.textarea.vue';
@@ -20,10 +21,14 @@ import XIf from './els/page-editor.el.if.vue';
 import XPost from './els/page-editor.el.post.vue';
 import XCounter from './els/page-editor.el.counter.vue';
 import XRadioButton from './els/page-editor.el.radio-button.vue';
+import XCanvas from './els/page-editor.el.canvas.vue';
+import XNote from './els/page-editor.el.note.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
-		XDraggable, XSection, XText, XImage, XButton, XTextarea, XTextInput, XTextareaInput, XNumberInput, XSwitch, XIf, XPost, XCounter, XRadioButton
+		XDraggable: defineAsyncComponent(() => import('vuedraggable').then(x => x.default)),
+		XSection, XText, XImage, XButton, XTextarea, XTextInput, XTextareaInput, XNumberInput, XSwitch, XIf, XPost, XCounter, XRadioButton, XCanvas, XNote
 	},
 
 	props: {
@@ -31,14 +36,21 @@ export default Vue.extend({
 			type: Array,
 			required: true
 		},
-		aiScript: {
+		hpml: {
 			required: true,
 		},
 	},
 
+	emits: ['update:value'],
+
 	computed: {
-		blocks() {
-			return this.value;
+		blocks: {
+			get() {
+				return this.value;
+			},
+			set(value) {
+				this.$emit('update:value', value);
+			}
 		}
 	},
 
@@ -50,16 +62,17 @@ export default Vue.extend({
 				v,
 				...this.blocks.slice(i + 1)
 			];
-			this.$emit('input', newValue);
+			this.$emit('update:value', newValue);
 		},
 
 		removeItem(el) {
+			console.log(el);
 			const i = this.blocks.findIndex(x => x.id === el.id);
 			const newValue = [
 				...this.blocks.slice(0, i),
 				...this.blocks.slice(i + 1)
 			];
-			this.$emit('input', newValue);
+			this.$emit('update:value', newValue);
 		},
 	}
 });

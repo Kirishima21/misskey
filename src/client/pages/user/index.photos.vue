@@ -1,29 +1,45 @@
 <template>
-<div class="ujigsodd">
-	<mk-loading v-if="fetching"/>
-	<div class="stream" v-if="!fetching && images.length > 0">
-		<a v-for="(image, i) in images" :key="i"
-			class="img"
-			:style="`background-image: url(${thumbnail(image.file)})`"
-			:href="image.note | notePage"
-		></a>
+<MkContainer :max-height="300" :foldable="true">
+	<template #header><i class="fas fa-image" style="margin-right: 0.5em;"></i>{{ $ts.images }}</template>
+	<div class="ujigsodd">
+		<MkLoading v-if="fetching"/>
+		<div class="stream" v-if="!fetching && images.length > 0">
+			<MkA v-for="image in images"
+				class="img"
+				:to="notePage(image.note)"
+				:key="image.id"
+			>
+				<ImgWithBlurhash :hash="image.blurhash" :src="thumbnail(image.file)" :alt="image.name" :title="image.name"/>
+			</MkA>
+		</div>
+		<p class="empty" v-if="!fetching && images.length == 0">{{ $ts.nothing }}</p>
 	</div>
-	<p class="empty" v-if="!fetching && images.length == 0">{{ $t('no-photos') }}</p>
-</div>
+</MkContainer>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../../i18n';
-import { getStaticImageUrl } from '../../scripts/get-static-image-url';
+import { defineComponent } from 'vue';
+import { getStaticImageUrl } from '@client/scripts/get-static-image-url';
+import notePage from '../../filters/note';
+import * as os from '@client/os';
+import MkContainer from '@client/components/ui/container.vue';
+import ImgWithBlurhash from '@client/components/img-with-blurhash.vue';
 
-export default Vue.extend({
-	i18n,
-	props: ['user'],
+export default defineComponent({
+	components: {
+		MkContainer,
+		ImgWithBlurhash,
+	},
+	props: {
+		user: {
+			type: Object,
+			required: true
+		},
+	},
 	data() {
 		return {
 			fetching: true,
-			images: []
+			images: [],
 		};
 	},
 	mounted() {
@@ -34,20 +50,18 @@ export default Vue.extend({
 			'image/apng',
 			'image/vnd.mozilla.apng',
 		];
-		this.$root.api('users/notes', {
+		os.api('users/notes', {
 			userId: this.user.id,
 			fileType: image,
-			excludeNsfw: !this.$store.state.device.alwaysShowNsfw,
-			limit: 9,
+			excludeNsfw: this.$store.state.nsfw !== 'ignore',
+			limit: 10,
 		}).then(notes => {
 			for (const note of notes) {
 				for (const file of note.files) {
-					if (this.images.length < 9) {
-						this.images.push({
-							note,
-							file
-						});
-					}
+					this.images.push({
+						note,
+						file
+					});
 				}
 			}
 			this.fetching = false;
@@ -55,33 +69,28 @@ export default Vue.extend({
 	},
 	methods: {
 		thumbnail(image: any): string {
-			return this.$store.state.device.disableShowingAnimatedImages
+			return this.$store.state.disableShowingAnimatedImages
 				? getStaticImageUrl(image.thumbnailUrl)
 				: image.thumbnailUrl;
 		},
+		notePage
 	},
 });
 </script>
 
 <style lang="scss" scoped>
 .ujigsodd {
+	padding: 8px;
 
 	> .stream {
-		display: flex;
-		justify-content: center;
-		flex-wrap: wrap;
-		padding: 8px;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		grid-gap: 6px;
 
 		> .img {
-			flex: 1 1 33%;
-			width: 33%;
-			height: 90px;
-			box-sizing: border-box;
-			background-position: center center;
-			background-size: cover;
-			background-clip: content-box;
-			border: solid 2px transparent;
-			border-radius: 4px;
+			height: 128px;
+			border-radius: 6px;
+			overflow: clip;
 		}
 	}
 

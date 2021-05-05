@@ -1,78 +1,87 @@
-import { faUpload, faCloud } from '@fortawesome/free-solid-svg-icons';
-import { selectDriveFile } from './select-drive-file';
-import { apiUrl } from '../config';
+import * as os from '@client/os';
+import { i18n } from '@client/i18n';
 
-export function selectFile(component: any, src: any, label: string | null, multiple = false) {
+export function selectFile(src: any, label: string | null, multiple = false) {
 	return new Promise((res, rej) => {
 		const chooseFileFromPc = () => {
 			const input = document.createElement('input');
 			input.type = 'file';
 			input.multiple = multiple;
 			input.onchange = () => {
-				const dialog = component.$root.dialog({
-					type: 'waiting',
-					text: component.$t('uploading') + '...',
-					showOkButton: false,
-					showCancelButton: false,
-					cancelableByBgClick: false
-				});
-
-				const promises = Array.from(input.files).map(file => new Promise((ok, err) => {
-					const data = new FormData();
-					data.append('file', file);
-					data.append('i', component.$store.state.i.token);
-
-					fetch(apiUrl + '/drive/files/create', {
-						method: 'POST',
-						body: data
-					})
-					.then(response => response.json())
-					.then(ok)
-					.catch(err);
-				}));
+				const promises = Array.from(input.files).map(file => os.upload(file));
 
 				Promise.all(promises).then(driveFiles => {
 					res(multiple ? driveFiles : driveFiles[0]);
 				}).catch(e => {
-					component.$root.dialog({
+					os.dialog({
 						type: 'error',
 						text: e
 					});
-				}).finally(() => {
-					dialog.close();
 				});
+
+				// 一応廃棄
+				(window as any).__misskey_input_ref__ = null;
 			};
+
+			// https://qiita.com/fukasawah/items/b9dc732d95d99551013d
+			// iOS Safari で正常に動かす為のおまじない
+			(window as any).__misskey_input_ref__ = input;
+
 			input.click();
 		};
 
 		const chooseFileFromDrive = () => {
-			selectDriveFile(component.$root, multiple).then(files => {
+			os.selectDriveFile(multiple).then(files => {
 				res(files);
 			});
 		};
 
 		const chooseFileFromUrl = () => {
+			os.dialog({
+				title: i18n.locale.uploadFromUrl,
+				input: {
+					placeholder: i18n.locale.uploadFromUrlDescription
+				}
+			}).then(({ canceled, result: url }) => {
+				if (canceled) return;
 
+				const marker = Math.random().toString(); // TODO: UUIDとか使う
+
+				const connection = os.stream.useSharedConnection('main');
+				connection.on('urlUploadFinished', data => {
+					if (data.marker === marker) {
+						res(multiple ? [data.file] : data.file);
+						connection.dispose();
+					}
+				});
+
+				os.api('drive/files/upload_from_url', {
+					url: url,
+					marker
+				});
+
+				os.dialog({
+					title: i18n.locale.uploadFromUrlRequested,
+					text: i18n.locale.uploadFromUrlMayTakeTime
+				});
+			});
 		};
 
-		component.$root.menu({
-			items: [label ? {
-				text: label,
-				type: 'label'
-			} : undefined, {
-				text: component.$t('upload'),
-				icon: faUpload,
-				action: chooseFileFromPc
-			}, {
-				text: component.$t('fromDrive'),
-				icon: faCloud,
-				action: chooseFileFromDrive
-			}, /*{
-				text: component.$t('fromUrl'),
-				icon: faLink,
-				action: chooseFileFromUrl
-			}*/],
-			source: src
-		});
+		os.modalMenu([label ? {
+			text: label,
+			type: 'label'
+		} : undefined, {
+			text: i18n.locale.upload,
+			icon: 'fas fa-upload',
+			action: chooseFileFromPc
+		}, {
+			text: i18n.locale.fromDrive,
+			icon: 'fas fa-cloud',
+			action: chooseFileFromDrive
+		}, {
+			text: i18n.locale.fromUrl,
+			icon: 'fas fa-link',
+			action: chooseFileFromUrl
+		}], src);
 	});
 }

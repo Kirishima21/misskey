@@ -1,14 +1,19 @@
 import $ from 'cafy';
-import { ID } from '../../../../misc/cafy-id';
+import { ID } from '@/misc/cafy-id';
 import define from '../../define';
 import { Antennas, Notes, AntennaNotes } from '../../../../models';
 import { makePaginationQuery } from '../../common/make-pagination-query';
 import { generateVisibilityQuery } from '../../common/generate-visibility-query';
-import { generateMuteQuery } from '../../common/generate-mute-query';
+import { generateMutedUserQuery } from '../../common/generate-muted-user-query';
 import { ApiError } from '../../error';
 
 export const meta = {
-	tags: ['account', 'notes', 'antennas'],
+	desc: {
+		'ja-JP': '指定したアンテナのノート一覧を表示します。',
+		'en-US': 'Displays a list of notes for the specified antenna.'
+	},
+
+	tags: ['antennas', 'account', 'notes'],
 
 	requireCredential: true as const,
 
@@ -39,6 +44,16 @@ export const meta = {
 			code: 'NO_SUCH_ANTENNA',
 			id: '850926e0-fd3b-49b6-b69a-b28a5dbd82fe'
 		}
+	},
+
+	res: {
+		type: 'array' as const,
+		optional: false as const, nullable: false as const,
+		items: {
+			type: 'object' as const,
+			optional: false as const, nullable: false as const,
+			ref: 'Note'
+		}
 	}
 };
 
@@ -58,11 +73,15 @@ export default define(meta, async (ps, user) => {
 
 	const query = makePaginationQuery(Notes.createQueryBuilder('note'), ps.sinceId, ps.untilId)
 		.andWhere(`note.id IN (${ antennaQuery.getQuery() })`)
-		.leftJoinAndSelect('note.user', 'user')
+		.innerJoinAndSelect('note.user', 'user')
+		.leftJoinAndSelect('note.reply', 'reply')
+		.leftJoinAndSelect('note.renote', 'renote')
+		.leftJoinAndSelect('reply.user', 'replyUser')
+		.leftJoinAndSelect('renote.user', 'renoteUser')
 		.setParameters(antennaQuery.getParameters());
 
 	generateVisibilityQuery(query, user);
-	generateMuteQuery(query, user);
+	generateMutedUserQuery(query, user);
 
 	const notes = await query
 		.take(ps.limit!)

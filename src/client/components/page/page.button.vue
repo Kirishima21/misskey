@@ -1,48 +1,55 @@
 <template>
 <div>
-	<mk-button class="kudkigyw" @click="click()" :primary="value.primary">{{ script.interpolate(value.text) }}</mk-button>
+	<MkButton class="kudkigyw" @click="click()" :primary="block.primary">{{ hpml.interpolate(block.text) }}</MkButton>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, PropType, unref } from 'vue';
 import MkButton from '../ui/button.vue';
+import * as os from '@client/os';
+import { ButtonBlock } from '@client/scripts/hpml/block';
+import { Hpml } from '@client/scripts/hpml/evaluator';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		MkButton
 	},
 	props: {
-		value: {
+		block: {
+			type: Object as PropType<ButtonBlock>,
 			required: true
 		},
-		script: {
+		hpml: {
+			type: Object as PropType<Hpml>,
 			required: true
 		}
 	},
 	methods: {
 		click() {
-			if (this.value.action === 'dialog') {
-				this.script.eval();
-				this.$root.dialog({
-					text: this.script.interpolate(this.value.content)
+			if (this.block.action === 'dialog') {
+				this.hpml.eval();
+				os.dialog({
+					text: this.hpml.interpolate(this.block.content)
 				});
-			} else if (this.value.action === 'resetRandom') {
-				this.script.aiScript.updateRandomSeed(Math.random());
-				this.script.eval();
-			} else if (this.value.action === 'pushEvent') {
-				this.$root.api('page-push', {
-					pageId: this.script.page.id,
-					event: this.value.event,
-					...(this.value.var ? {
-						var: this.script.vars[this.value.var]
+			} else if (this.block.action === 'resetRandom') {
+				this.hpml.updateRandomSeed(Math.random());
+				this.hpml.eval();
+			} else if (this.block.action === 'pushEvent') {
+				os.api('page-push', {
+					pageId: this.hpml.page.id,
+					event: this.block.event,
+					...(this.block.var ? {
+						var: unref(this.hpml.vars)[this.block.var]
 					} : {})
 				});
 
-				this.$root.dialog({
+				os.dialog({
 					type: 'success',
-					text: this.script.interpolate(this.value.message)
+					text: this.hpml.interpolate(this.block.message)
 				});
+			} else if (this.block.action === 'callAiScript') {
+				this.hpml.callAiScript(this.block.fn);
 			}
 		}
 	}

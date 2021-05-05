@@ -1,95 +1,110 @@
 <template>
 <div
-	class="note _panel"
-	v-show="!isDeleted && !hideThisNote"
+	class="tkcbzcuz"
+	v-if="!muted"
+	v-show="!isDeleted"
 	:tabindex="!isDeleted ? '-1' : null"
 	:class="{ renote: isRenote }"
 	v-hotkey="keymap"
-	v-size="[{ max: 500 }, { max: 450 }, { max: 350 }, { max: 300 }]"
+	v-size="{ max: [500, 450, 350, 300] }"
 >
-	<x-sub v-for="note in conversation" :key="note.id" :note="note"/>
-	<x-sub :note="appearNote.reply" class="reply-to" v-if="appearNote.reply"/>
-	<div class="info" v-if="pinned"><fa :icon="faThumbtack"/> {{ $t('pinnedNote') }}</div>
-	<div class="info" v-if="appearNote._prId_"><fa :icon="faBullhorn"/> {{ $t('promotion') }}<button class="_textButton hide" @click="readPromo()">{{ $t('hideThisNote') }} <fa :icon="faTimes"/></button></div>
-	<div class="info" v-if="appearNote._featuredId_"><fa :icon="faBolt"/> {{ $t('featured') }}</div>
+	<XSub :note="appearNote.reply" class="reply-to" v-if="appearNote.reply"/>
+	<div class="info" v-if="pinned"><i class="fas fa-thumbtack"></i> {{ $ts.pinnedNote }}</div>
+	<div class="info" v-if="appearNote._prId_"><i class="fas fa-bullhorn"></i> {{ $ts.promotion }}<button class="_textButton hide" @click="readPromo()">{{ $ts.hideThisNote }} <i class="fas fa-times"></i></button></div>
+	<div class="info" v-if="appearNote._featuredId_"><i class="fas fa-bolt"></i> {{ $ts.featured }}</div>
 	<div class="renote" v-if="isRenote">
-		<mk-avatar class="avatar" :user="note.user"/>
-		<fa :icon="faRetweet"/>
-		<i18n path="renotedBy" tag="span">
-			<router-link class="name" :to="note.user | userPage" v-user-preview="note.userId" place="user">
-				<mk-user-name :user="note.user"/>
-			</router-link>
-		</i18n>
+		<MkAvatar class="avatar" :user="note.user"/>
+		<i class="fas fa-retweet"></i>
+		<I18n :src="$ts.renotedBy" tag="span">
+			<template #user>
+				<MkA class="name" :to="userPage(note.user)" v-user-preview="note.userId">
+					<MkUserName :user="note.user"/>
+				</MkA>
+			</template>
+		</I18n>
 		<div class="info">
-			<button class="_button time" @click="showRenoteMenu()" ref="renoteTime"><mk-time :time="note.createdAt"/></button>
-			<span class="visibility" v-if="note.visibility != 'public'">
-				<fa v-if="note.visibility == 'home'" :icon="faHome"/>
-				<fa v-if="note.visibility == 'followers'" :icon="faUnlock"/>
-				<fa v-if="note.visibility == 'specified'" :icon="faEnvelope"/>
+			<button class="_button time" @click="showRenoteMenu()" ref="renoteTime">
+				<i v-if="isMyRenote" class="fas fa-ellipsis-h dropdownIcon"></i>
+				<MkTime :time="note.createdAt"/>
+			</button>
+			<span class="visibility" v-if="note.visibility !== 'public'">
+				<i v-if="note.visibility === 'home'" class="fas fa-home"></i>
+				<i v-else-if="note.visibility === 'followers'" class="fas fa-unlock"></i>
+				<i v-else-if="note.visibility === 'specified'" class="fas fa-envelope"></i>
 			</span>
+			<span class="localOnly" v-if="note.localOnly"><i class="fas fa-biohazard"></i></span>
 		</div>
 	</div>
-	<article class="article">
-		<mk-avatar class="avatar" :user="appearNote.user"/>
+	<article class="article" @contextmenu.stop="onContextmenu">
+		<MkAvatar class="avatar" :user="appearNote.user"/>
 		<div class="main">
-			<x-note-header class="header" :note="appearNote" :mini="true"/>
-			<div class="body" v-if="appearNote.deletedAt == null">
+			<XNoteHeader class="header" :note="appearNote" :mini="true"/>
+			<MkInstanceTicker v-if="showTicker" class="ticker" :instance="appearNote.user.instance"/>
+			<div class="body">
 				<p v-if="appearNote.cw != null" class="cw">
-				<mfm v-if="appearNote.cw != ''" class="text" :text="appearNote.cw" :author="appearNote.user" :i="$store.state.i" :custom-emojis="appearNote.emojis" />
-					<x-cw-button v-model="showContent" :note="appearNote"/>
+					<Mfm v-if="appearNote.cw != ''" class="text" :text="appearNote.cw" :author="appearNote.user" :i="$i" :custom-emojis="appearNote.emojis"/>
+					<XCwButton v-model:value="showContent" :note="appearNote"/>
 				</p>
-				<div class="content" v-show="appearNote.cw == null || showContent">
+				<div class="content" :class="{ collapsed }" v-show="appearNote.cw == null || showContent">
 					<div class="text">
-						<span v-if="appearNote.isHidden" style="opacity: 0.5">({{ $t('private') }})</span>
-						<router-link class="reply" v-if="appearNote.replyId" :to="`/notes/${appearNote.replyId}`"><fa :icon="faReply"/></router-link>
-						<mfm v-if="appearNote.text" :text="appearNote.text" :author="appearNote.user" :i="$store.state.i" :custom-emojis="appearNote.emojis"/>
+						<span v-if="appearNote.isHidden" style="opacity: 0.5">({{ $ts.private }})</span>
+						<MkA class="reply" v-if="appearNote.replyId" :to="`/notes/${appearNote.replyId}`"><i class="fas fa-reply"></i></MkA>
+						<Mfm v-if="appearNote.text" :text="appearNote.text" :author="appearNote.user" :i="$i" :custom-emojis="appearNote.emojis"/>
 						<a class="rp" v-if="appearNote.renote != null">RN:</a>
 					</div>
 					<div class="files" v-if="appearNote.files.length > 0">
-						<x-media-list :media-list="appearNote.files"/>
+						<XMediaList :media-list="appearNote.files"/>
 					</div>
-					<x-poll v-if="appearNote.poll" :note="appearNote" ref="pollViewer"/>
-					<mk-url-preview v-for="url in urls" :url="url" :key="url" :compact="true" class="url-preview"/>
-					<div class="renote" v-if="appearNote.renote"><x-note-preview :note="appearNote.renote"/></div>
+					<XPoll v-if="appearNote.poll" :note="appearNote" ref="pollViewer" class="poll"/>
+					<MkUrlPreview v-for="url in urls" :url="url" :key="url" :compact="true" :detail="false" class="url-preview"/>
+					<div class="renote" v-if="appearNote.renote"><XNotePreview :note="appearNote.renote"/></div>
+					<button v-if="collapsed" class="fade _button" @click="collapsed = false">
+						<span>{{ $ts.showMore }}</span>
+					</button>
 				</div>
+				<MkA v-if="appearNote.channel && !inChannel" class="channel" :to="`/channels/${appearNote.channel.id}`"><i class="fas fa-satellite-dish"></i> {{ appearNote.channel.name }}</MkA>
 			</div>
-			<footer v-if="appearNote.deletedAt == null" class="footer">
-				<x-reactions-viewer :note="appearNote" ref="reactionsViewer"/>
+			<footer class="footer">
+				<XReactionsViewer :note="appearNote" ref="reactionsViewer"/>
 				<button @click="reply()" class="button _button">
-					<template v-if="appearNote.reply"><fa :icon="faReplyAll"/></template>
-					<template v-else><fa :icon="faReply"/></template>
+					<template v-if="appearNote.reply"><i class="fas fa-reply-all"></i></template>
+					<template v-else><i class="fas fa-reply"></i></template>
 					<p class="count" v-if="appearNote.repliesCount > 0">{{ appearNote.repliesCount }}</p>
 				</button>
 				<button v-if="canRenote" @click="renote()" class="button _button" ref="renoteButton">
-					<fa :icon="faRetweet"/><p class="count" v-if="appearNote.renoteCount > 0">{{ appearNote.renoteCount }}</p>
+					<i class="fas fa-retweet"></i><p class="count" v-if="appearNote.renoteCount > 0">{{ appearNote.renoteCount }}</p>
 				</button>
 				<button v-else class="button _button">
-					<fa :icon="faBan"/>
+					<i class="fas fa-ban"></i>
 				</button>
-				<button v-if="!isMyNote && appearNote.myReaction == null" class="button _button" @click="react()" ref="reactButton">
-					<fa :icon="faPlus"/>
+				<button v-if="appearNote.myReaction == null" class="button _button" @click="react()" ref="reactButton">
+					<i class="fas fa-plus"></i>
 				</button>
-				<button v-if="!isMyNote && appearNote.myReaction != null" class="button _button reacted" @click="undoReact(appearNote)" ref="reactButton">
-					<fa :icon="faMinus"/>
+				<button v-if="appearNote.myReaction != null" class="button _button reacted" @click="undoReact(appearNote)" ref="reactButton">
+					<i class="fas fa-minus"></i>
 				</button>
 				<button class="button _button" @click="menu()" ref="menuButton">
-					<fa :icon="faEllipsisH"/>
+					<i class="fas fa-ellipsis-h"></i>
 				</button>
 			</footer>
-			<div class="deleted" v-if="appearNote.deletedAt != null">{{ $t('deleted') }}</div>
 		</div>
 	</article>
-	<x-sub v-for="note in replies" :key="note.id" :note="note" class="reply"/>
+</div>
+<div v-else class="muted" @click="muted = false">
+	<I18n :src="$ts.userSaysSomething" tag="small">
+		<template #name>
+			<MkA class="name" :to="userPage(appearNote.user)" v-user-preview="appearNote.userId">
+				<MkUserName :user="appearNote.user"/>
+			</MkA>
+		</template>
+	</I18n>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faBolt, faTimes, faBullhorn, faStar, faLink, faExternalLinkSquareAlt, faPlus, faMinus, faRetweet, faReply, faReplyAll, faEllipsisH, faHome, faUnlock, faEnvelope, faThumbtack, faBan, faQuoteRight, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { faCopy, faTrashAlt, faEdit, faEye, faEyeSlash } from '@fortawesome/free-regular-svg-icons';
-import { parse } from '../../mfm/parse';
-import { sum, unique } from '../../prelude/array';
-import i18n from '../i18n';
+import { defineAsyncComponent, defineComponent, markRaw } from 'vue';
+import * as mfm from 'mfm-js';
+import { sum } from '../../prelude/array';
 import XSub from './note.sub.vue';
 import XNoteHeader from './note-header.vue';
 import XNotePreview from './note-preview.vue';
@@ -97,16 +112,18 @@ import XReactionsViewer from './reactions-viewer.vue';
 import XMediaList from './media-list.vue';
 import XCwButton from './cw-button.vue';
 import XPoll from './poll.vue';
-import MkUrlPreview from './url-preview.vue';
-import MkReactionPicker from './reaction-picker.vue';
-import pleaseLogin from '../scripts/please-login';
-import { focusPrev, focusNext } from '../scripts/focus';
-import { url } from '../config';
-import copyToClipboard from '../scripts/copy-to-clipboard';
+import { pleaseLogin } from '@client/scripts/please-login';
+import { focusPrev, focusNext } from '@client/scripts/focus';
+import { url } from '@client/config';
+import copyToClipboard from '@client/scripts/copy-to-clipboard';
+import { checkWordMute } from '@client/scripts/check-word-mute';
+import { userPage } from '@client/filters/user';
+import * as os from '@client/os';
+import { noteActions, noteViewInterruptors } from '@client/store';
+import { reactionPicker } from '@client/scripts/reaction-picker';
+import { extractUrlFromMfm } from '@/misc/extract-url-from-mfm';
 
-export default Vue.extend({
-	i18n,
-	
+export default defineComponent({
 	components: {
 		XSub,
 		XNoteHeader,
@@ -115,18 +132,20 @@ export default Vue.extend({
 		XMediaList,
 		XCwButton,
 		XPoll,
-		MkUrlPreview,
+		MkUrlPreview: defineAsyncComponent(() => import('@client/components/url-preview.vue')),
+		MkInstanceTicker: defineAsyncComponent(() => import('@client/components/instance-ticker.vue')),
+	},
+
+	inject: {
+		inChannel: {
+			default: null
+		},
 	},
 
 	props: {
 		note: {
 			type: Object,
 			required: true
-		},
-		detail: {
-			type: Boolean,
-			required: false,
-			default: false
 		},
 		pinned: {
 			type: Boolean,
@@ -135,18 +154,23 @@ export default Vue.extend({
 		},
 	},
 
+	emits: ['update:note'],
+
 	data() {
 		return {
 			connection: null,
-			conversation: [],
 			replies: [],
 			showContent: false,
-			hideThisNote: false,
-			faEdit, faBolt, faTimes, faBullhorn, faPlus, faMinus, faRetweet, faReply, faReplyAll, faEllipsisH, faHome, faUnlock, faEnvelope, faThumbtack, faBan
+			collapsed: false,
+			isDeleted: false,
+			muted: false,
 		};
 	},
 
 	computed: {
+		rs() {
+			return this.$store.state.reactions;
+		},
 		keymap(): any {
 			return {
 				'r': () => this.reply(true),
@@ -160,16 +184,16 @@ export default Vue.extend({
 				'esc': this.blur,
 				'm|o': () => this.menu(true),
 				's': this.toggleShowContent,
-				'1': () => this.reactDirectly(this.$store.state.settings.reactions[0]),
-				'2': () => this.reactDirectly(this.$store.state.settings.reactions[1]),
-				'3': () => this.reactDirectly(this.$store.state.settings.reactions[2]),
-				'4': () => this.reactDirectly(this.$store.state.settings.reactions[3]),
-				'5': () => this.reactDirectly(this.$store.state.settings.reactions[4]),
-				'6': () => this.reactDirectly(this.$store.state.settings.reactions[5]),
-				'7': () => this.reactDirectly(this.$store.state.settings.reactions[6]),
-				'8': () => this.reactDirectly(this.$store.state.settings.reactions[7]),
-				'9': () => this.reactDirectly(this.$store.state.settings.reactions[8]),
-				'0': () => this.reactDirectly(this.$store.state.settings.reactions[9]),
+				'1': () => this.reactDirectly(this.rs[0]),
+				'2': () => this.reactDirectly(this.rs[1]),
+				'3': () => this.reactDirectly(this.rs[2]),
+				'4': () => this.reactDirectly(this.rs[3]),
+				'5': () => this.reactDirectly(this.rs[4]),
+				'6': () => this.reactDirectly(this.rs[5]),
+				'7': () => this.reactDirectly(this.rs[6]),
+				'8': () => this.reactDirectly(this.rs[7]),
+				'9': () => this.reactDirectly(this.rs[8]),
+				'0': () => this.reactDirectly(this.rs[9]),
 			};
 		},
 
@@ -184,12 +208,12 @@ export default Vue.extend({
 			return this.isRenote ? this.note.renote : this.note;
 		},
 
-		isDeleted(): boolean {
-			return this.appearNote.deletedAt != null || this.note.deletedAt != null;
+		isMyNote(): boolean {
+			return this.$i && (this.$i.id === this.appearNote.userId);
 		},
 
-		isMyNote(): boolean {
-			return this.$store.getters.isSignedIn && (this.$store.state.i.id === this.appearNote.userId);
+		isMyRenote(): boolean {
+			return this.$i && (this.$i.id === this.note.userId);
 		},
 
 		canRenote(): boolean {
@@ -204,83 +228,87 @@ export default Vue.extend({
 
 		urls(): string[] {
 			if (this.appearNote.text) {
-				const ast = parse(this.appearNote.text);
-				// TODO: 再帰的にURL要素がないか調べる
-				const urls = unique(ast
-					.filter(t => ((t.node.type == 'url' || t.node.type == 'link') && t.node.props.url && !t.node.props.silent))
-					.map(t => t.node.props.url));
-
-				// unique without hash
-				// [ http://a/#1, http://a/#2, http://b/#3 ] => [ http://a/#1, http://b/#3 ]
-				const removeHash = x => x.replace(/#[^#]*$/, '');
-
-				return urls.reduce((array, url) => {
-					const removed = removeHash(url);
-					if (!array.map(x => removeHash(x)).includes(removed)) array.push(url);
-					return array;
-				}, []);
+				return extractUrlFromMfm(mfm.parse(this.appearNote.text));
 			} else {
 				return null;
 			}
+		},
+
+		showTicker() {
+			if (this.$store.state.instanceTicker === 'always') return true;
+			if (this.$store.state.instanceTicker === 'remote' && this.appearNote.user.instance) return true;
+			return false;
 		}
 	},
 
-	created() {
-		if (this.$store.getters.isSignedIn) {
-			this.connection = this.$root.stream;
+	async created() {
+		if (this.$i) {
+			this.connection = os.stream;
 		}
 
-		if (this.detail) {
-			this.$root.api('notes/children', {
-				noteId: this.appearNote.id,
-				limit: 30
-			}).then(replies => {
-				this.replies = replies;
-			});
+		this.collapsed = this.appearNote.cw == null && this.appearNote.text && (
+			(this.appearNote.text.split('\n').length > 9) ||
+			(this.appearNote.text.length > 500)
+		);
+		this.muted = await checkWordMute(this.appearNote, this.$i, this.$store.state.mutedWords);
 
-			if (this.appearNote.replyId) {
-				this.$root.api('notes/conversation', {
-					noteId: this.appearNote.replyId
-				}).then(conversation => {
-					this.conversation = conversation.reverse();
-				});
+		// plugin
+		if (noteViewInterruptors.length > 0) {
+			let result = this.note;
+			for (const interruptor of noteViewInterruptors) {
+				result = await interruptor.handler(JSON.parse(JSON.stringify(result)));
 			}
+			this.$emit('update:note', Object.freeze(result));
 		}
 	},
 
 	mounted() {
 		this.capture(true);
 
-		if (this.$store.getters.isSignedIn) {
+		if (this.$i) {
 			this.connection.on('_connected_', this.onStreamConnected);
 		}
 	},
 
-	beforeDestroy() {
+	beforeUnmount() {
 		this.decapture(true);
 
-		if (this.$store.getters.isSignedIn) {
+		if (this.$i) {
 			this.connection.off('_connected_', this.onStreamConnected);
 		}
 	},
 
 	methods: {
+		updateAppearNote(v) {
+			this.$emit('update:note', Object.freeze(this.isRenote ? {
+				...this.note,
+				renote: {
+					...this.note.renote,
+					...v
+				}
+			} : {
+				...this.note,
+				...v
+			}));
+		},
+
 		readPromo() {
-			(this as any).$root.api('promo/read', {
+			os.api('promo/read', {
 				noteId: this.appearNote.id
 			});
-			this.hideThisNote = true;
+			this.isDeleted = true;
 		},
 
 		capture(withHandler = false) {
-			if (this.$store.getters.isSignedIn) {
-				this.connection.send(document.body.contains(this.$el) ? 'sn' : 's', { id: this.appearNote.id });
+			if (this.$i) {
+				// TODO: このノートがストリーミング経由で流れてきた場合のみ sr する
+				this.connection.send(document.body.contains(this.$el) ? 'sr' : 's', { id: this.appearNote.id });
 				if (withHandler) this.connection.on('noteUpdated', this.onStreamNoteUpdated);
 			}
 		},
 
 		decapture(withHandler = false) {
-			if (this.$store.getters.isSignedIn) {
+			if (this.$i) {
 				this.connection.send('un', {
 					id: this.appearNote.id
 				});
@@ -301,67 +329,96 @@ export default Vue.extend({
 				case 'reacted': {
 					const reaction = body.reaction;
 
-					if (this.appearNote.reactions == null) {
-						Vue.set(this.appearNote, 'reactions', {});
+					// DeepではなくShallowコピーであることに注意。n.reactions[reaction] = hogeとかしないように(親からもらったデータをミューテートすることになるので)
+					let n = {
+						...this.appearNote,
+					};
+
+					if (body.emoji) {
+						const emojis = this.appearNote.emojis || [];
+						if (!emojis.includes(body.emoji)) {
+							n.emojis = [...emojis, body.emoji];
+						}
 					}
 
-					if (this.appearNote.reactions[reaction] == null) {
-						Vue.set(this.appearNote.reactions, reaction, 0);
-					}
+					// TODO: reactionsプロパティがない場合ってあったっけ？ なければ || {} は消せる
+					const currentCount = (this.appearNote.reactions || {})[reaction] || 0;
 
 					// Increment the count
-					this.appearNote.reactions[reaction]++;
+					n.reactions = {
+						...this.appearNote.reactions,
+						[reaction]: currentCount + 1
+					};
 
-					if (body.userId == this.$store.state.i.id) {
-						Vue.set(this.appearNote, 'myReaction', reaction);
+					if (body.userId === this.$i.id) {
+						n.myReaction = reaction;
 					}
+
+					this.updateAppearNote(n);
 					break;
 				}
 
 				case 'unreacted': {
 					const reaction = body.reaction;
 
-					if (this.appearNote.reactions == null) {
-						return;
-					}
+					// DeepではなくShallowコピーであることに注意。n.reactions[reaction] = hogeとかしないように(親からもらったデータをミューテートすることになるので)
+					let n = {
+						...this.appearNote,
+					};
 
-					if (this.appearNote.reactions[reaction] == null) {
-						return;
-					}
+					// TODO: reactionsプロパティがない場合ってあったっけ？ なければ || {} は消せる
+					const currentCount = (this.appearNote.reactions || {})[reaction] || 0;
 
 					// Decrement the count
-					if (this.appearNote.reactions[reaction] > 0) this.appearNote.reactions[reaction]--;
+					n.reactions = {
+						...this.appearNote.reactions,
+						[reaction]: Math.max(0, currentCount - 1)
+					};
 
-					if (body.userId == this.$store.state.i.id) {
-						Vue.set(this.appearNote, 'myReaction', null);
+					if (body.userId === this.$i.id) {
+						n.myReaction = null;
 					}
+
+					this.updateAppearNote(n);
 					break;
 				}
 
 				case 'pollVoted': {
 					const choice = body.choice;
-					this.appearNote.poll.choices[choice].votes++;
-					if (body.userId == this.$store.state.i.id) {
-						Vue.set(this.appearNote.poll.choices[choice], 'isVoted', true);
-					}
+
+					// DeepではなくShallowコピーであることに注意。n.reactions[reaction] = hogeとかしないように(親からもらったデータをミューテートすることになるので)
+					let n = {
+						...this.appearNote,
+					};
+
+					const choices = [...this.appearNote.poll.choices];
+					choices[choice] = {
+						...choices[choice],
+						votes: choices[choice].votes + 1,
+						...(body.userId === this.$i.id ? {
+							isVoted: true
+						} : {})
+					};
+
+					n.poll = {
+						...this.appearNote.poll,
+						choices: choices
+					};
+
+					this.updateAppearNote(n);
 					break;
 				}
 
 				case 'deleted': {
-					Vue.set(this.appearNote, 'deletedAt', body.deletedAt);
-					Vue.set(this.appearNote, 'renote', null);
-					this.appearNote.text = null;
-					this.appearNote.fileIds = [];
-					this.appearNote.poll = null;
-					this.appearNote.cw = null;
+					this.isDeleted = true;
 					break;
 				}
 			}
 		},
 
 		reply(viaKeyboard = false) {
-			pleaseLogin(this.$root);
-			this.$root.post({
+			pleaseLogin();
+			os.post({
 				reply: this.appearNote,
 				animation: !viaKeyboard,
 			}, () => {
@@ -370,57 +427,67 @@ export default Vue.extend({
 		},
 
 		renote(viaKeyboard = false) {
-			pleaseLogin(this.$root);
+			pleaseLogin();
 			this.blur();
-			this.$root.menu({
-				items: [{
-					text: this.$t('renote'),
-					icon: faRetweet,
-					action: () => {
-						(this as any).$root.api('notes/create', {
-							renoteId: this.appearNote.id
-						});
-					}
-				}, {
-					text: this.$t('quote'),
-					icon: faQuoteRight,
-					action: () => {
-						this.$root.post({
-							renote: this.appearNote,
-						});
-					}
-				}]
-				source: this.$refs.renoteButton,
+			os.modalMenu([{
+				text: this.$ts.renote,
+				icon: 'fas fa-retweet',
+				action: () => {
+					os.api('notes/create', {
+						renoteId: this.appearNote.id
+					});
+				}
+			}, {
+				text: this.$ts.quote,
+				icon: 'fas fa-quote-right',
+				action: () => {
+					os.post({
+						renote: this.appearNote,
+					});
+				}
+			}], this.$refs.renoteButton, {
 				viaKeyboard
 			});
 		},
 
 		renoteDirectly() {
-			(this as any).$root.api('notes/create', {
+			os.apiWithDialog('notes/create', {
 				renoteId: this.appearNote.id
+			}, undefined, (res: any) => {
+				os.dialog({
+					type: 'success',
+					text: this.$ts.renoted,
+				});
+			}, (e: Error) => {
+				if (e.id === 'b5c90186-4ab0-49c8-9bba-a1f76c282ba4') {
+					os.dialog({
+						type: 'error',
+						text: this.$ts.cantRenote,
+					});
+				} else if (e.id === 'fd4cc33e-2a37-48dd-99cc-9b806eb2031a') {
+					os.dialog({
+						type: 'error',
+						text: this.$ts.cantReRenote,
+					});
+				}
 			});
 		},
 
 		react(viaKeyboard = false) {
-			pleaseLogin(this.$root);
+			pleaseLogin();
 			this.blur();
-			const picker = this.$root.new(MkReactionPicker, {
-				source: this.$refs.reactButton,
-				showFocus: viaKeyboard,
-			});
-			picker.$once('chosen', reaction => {
-				this.$root.api('notes/reactions/create', {
+			reactionPicker.show(this.$refs.reactButton, reaction => {
+				os.api('notes/reactions/create', {
 					noteId: this.appearNote.id,
 					reaction: reaction
-				}).then(() => {
-					picker.close();
 				});
+			}, () => {
+				this.focus();
 			});
-			picker.$once('closed', this.focus);
 		},
 
 		reactDirectly(reaction) {
-			this.$root.api('notes/reactions/create', {
+			os.api('notes/reactions/create', {
 				noteId: this.appearNote.id,
 				reaction: reaction
 			});
@@ -429,148 +496,172 @@ export default Vue.extend({
 		undoReact(note) {
 			const oldReaction = note.myReaction;
 			if (!oldReaction) return;
-			this.$root.api('notes/reactions/delete', {
+			os.api('notes/reactions/delete', {
 				noteId: note.id
 			});
 		},
 
 		favorite() {
-			pleaseLogin(this.$root);
-			this.$root.api('notes/favorites/create', {
+			pleaseLogin();
+			os.apiWithDialog('notes/favorites/create', {
 				noteId: this.appearNote.id
-			}).then(() => {
-				this.$root.dialog({
+			}, undefined, (res: any) => {
+				os.dialog({
 					type: 'success',
-					iconOnly: true, autoClose: true
+					text: this.$ts.favorited,
 				});
+			}, (e: Error) => {
+				if (e.id === 'a402c12b-34dd-41d2-97d8-4d2ffd96a1a6') {
+					os.dialog({
+						type: 'error',
+						text: this.$ts.alreadyFavorited,
+					});
+				} else if (e.id === '6dd26674-e060-4816-909a-45ba3f4da458') {
+					os.dialog({
+						type: 'error',
+						text: this.$ts.cantFavorite,
+					});
+				}
 			});
 		},
 
 		del() {
-			this.$root.dialog({
+			os.dialog({
 				type: 'warning',
-				text: this.$t('noteDeleteConfirm'),
+				text: this.$ts.noteDeleteConfirm,
 				showCancelButton: true
 			}).then(({ canceled }) => {
 				if (canceled) return;
 
-				this.$root.api('notes/delete', {
+				os.api('notes/delete', {
 					noteId: this.appearNote.id
 				});
 			});
 		},
 
 		delEdit() {
-			this.$root.dialog({
+			os.dialog({
 				type: 'warning',
-				text: this.$t('deleteAndEditConfirm'),
+				text: this.$ts.deleteAndEditConfirm,
 				showCancelButton: true
 			}).then(({ canceled }) => {
 				if (canceled) return;
 
-				this.$root.api('notes/delete', {
+				os.api('notes/delete', {
 					noteId: this.appearNote.id
 				});
 
-				this.$root.post({ initialNote: this.appearNote, renote: this.appearNote.renote, reply: this.appearNote.reply });
+				os.post({ initialNote: this.appearNote, renote: this.appearNote.renote, reply: this.appearNote.reply, channel: this.appearNote.channel });
 			});
 		},
 
 		toggleFavorite(favorite: boolean) {
-			this.$root.api(favorite ? 'notes/favorites/create' : 'notes/favorites/delete', {
+			os.apiWithDialog(favorite ? 'notes/favorites/create' : 'notes/favorites/delete', {
 				noteId: this.appearNote.id
-			}).then(() => {
-				this.$root.dialog({
-					type: 'success',
-					iconOnly: true, autoClose: true
-				});
 			});
 		},
 
 		toggleWatch(watch: boolean) {
-			this.$root.api(watch ? 'notes/watching/create' : 'notes/watching/delete', {
+			os.apiWithDialog(watch ? 'notes/watching/create' : 'notes/watching/delete', {
 				noteId: this.appearNote.id
-			}).then(() => {
-				this.$root.dialog({
-					type: 'success',
-					iconOnly: true, autoClose: true
-				});
 			});
 		},
 
-		async menu(viaKeyboard = false) {
+		getMenu() {
 			let menu;
-			if (this.$store.getters.isSignedIn) {
-				const state = await this.$root.api('notes/state', {
+			if (this.$i) {
+				const statePromise = os.api('notes/state', {
 					noteId: this.appearNote.id
 				});
+
 				menu = [{
-					type: 'link',
-					icon: faInfoCircle,
-					text: this.$t('details'),
-					to: '/notes/' + this.appearNote.id
-				}, null, {
-					icon: faCopy,
-					text: this.$t('copyContent'),
+					icon: 'fas fa-copy',
+					text: this.$ts.copyContent,
 					action: this.copyContent
 				}, {
-					icon: faLink,
-					text: this.$t('copyLink'),
+					icon: 'fas fa-link',
+					text: this.$ts.copyLink,
 					action: this.copyLink
-				}, this.appearNote.uri ? {
-					icon: faExternalLinkSquareAlt,
-					text: this.$t('showOnRemote'),
+				}, (this.appearNote.url || this.appearNote.uri) ? {
+					icon: 'fas fa-external-link-square-alt',
+					text: this.$ts.showOnRemote,
 					action: () => {
-						window.open(this.appearNote.uri, '_blank');
+						window.open(this.appearNote.url || this.appearNote.uri, '_blank');
 					}
 				} : undefined,
+				{
+					icon: 'fas fa-share-alt',
+					text: this.$ts.share,
+					action: this.share
+				},
 				null,
-				state.isFavorited ? {
-					icon: faStar,
-					text: this.$t('unfavorite'),
+				statePromise.then(state => state.isFavorited ? {
+					icon: 'fas fa-star',
+					text: this.$ts.unfavorite,
 					action: () => this.toggleFavorite(false)
 				} : {
-					icon: faStar,
-					text: this.$t('favorite'),
+					icon: 'fas fa-star',
+					text: this.$ts.favorite,
 					action: () => this.toggleFavorite(true)
+				}),
+				{
+					icon: 'fas fa-paperclip',
+					text: this.$ts.clip,
+					action: () => this.clip()
 				},
-				this.appearNote.userId != this.$store.state.i.id ? state.isWatching ? {
-					icon: faEyeSlash,
-					text: this.$t('unwatch'),
+				(this.appearNote.userId != this.$i.id) ? statePromise.then(state => state.isWatching ? {
+					icon: 'fas fa-eye-slash',
+					text: this.$ts.unwatch,
 					action: () => this.toggleWatch(false)
 				} : {
-					icon: faEye,
-					text: this.$t('watch'),
+					icon: 'fas fa-eye',
+					text: this.$ts.watch,
 					action: () => this.toggleWatch(true)
-				} : undefined,
-				this.appearNote.userId == this.$store.state.i.id ? (this.$store.state.i.pinnedNoteIds || []).includes(this.appearNote.id) ? {
-					icon: faThumbtack,
-					text: this.$t('unpin'),
+				}) : undefined,
+				this.appearNote.userId == this.$i.id ? (this.$i.pinnedNoteIds || []).includes(this.appearNote.id) ? {
+					icon: 'fas fa-thumbtack',
+					text: this.$ts.unpin,
 					action: () => this.togglePin(false)
 				} : {
-					icon: faThumbtack,
-					text: this.$t('pin'),
+					icon: 'fas fa-thumbtack',
+					text: this.$ts.pin,
 					action: () => this.togglePin(true)
 				} : undefined,
-				...(this.$store.state.i.isModerator || this.$store.state.i.isAdmin ? [
+				...(this.$i.isModerator || this.$i.isAdmin ? [
 					null,
 					{
-						icon: faBullhorn,
-						text: this.$t('promote'),
+						icon: 'fas fa-bullhorn',
+						text: this.$ts.promote,
 						action: this.promote
 					}]
 					: []
 				),
-				...(this.appearNote.userId == this.$store.state.i.id ? [
+				...(this.appearNote.userId != this.$i.id ? [
 					null,
 					{
-						icon: faEdit,
-						text: this.$t('deleteAndEdit'),
+						icon: 'fas fa-exclamation-circle',
+						text: this.$ts.reportAbuse,
+						action: () => {
+							const u = `${url}/notes/${this.appearNote.id}`;
+							os.popup(import('@client/components/abuse-report-window.vue'), {
+								user: this.appearNote.user,
+								initialComment: `Note: ${u}\n-----\n`
+							}, {}, 'closed');
+						}
+					}]
+					: []
+				),
+				...(this.appearNote.userId == this.$i.id || this.$i.isModerator || this.$i.isAdmin ? [
+					null,
+					this.appearNote.userId == this.$i.id ? {
+						icon: 'fas fa-edit',
+						text: this.$ts.deleteAndEdit,
 						action: this.delEdit
-					},
+					} : undefined,
 					{
-						icon: faTrashAlt,
-						text: this.$t('delete'),
+						icon: 'fas fa-trash-alt',
+						text: this.$ts.delete,
+						danger: true,
 						action: this.del
 					}]
 					: []
@@ -578,44 +669,73 @@ export default Vue.extend({
 				.filter(x => x !== undefined);
 			} else {
 				menu = [{
-					icon: faCopy,
-					text: this.$t('copyContent'),
+					icon: 'fas fa-copy',
+					text: this.$ts.copyContent,
 					action: this.copyContent
 				}, {
-					icon: faLink,
-					text: this.$t('copyLink'),
+					icon: 'fas fa-link',
+					text: this.$ts.copyLink,
 					action: this.copyLink
-				}, this.appearNote.uri ? {
-					icon: faExternalLinkSquareAlt,
-					text: this.$t('showOnRemote'),
+				}, (this.appearNote.url || this.appearNote.uri) ? {
+					icon: 'fas fa-external-link-square-alt',
+					text: this.$ts.showOnRemote,
 					action: () => {
-						window.open(this.appearNote.uri, '_blank');
+						window.open(this.appearNote.url || this.appearNote.uri, '_blank');
 					}
 				} : undefined]
 				.filter(x => x !== undefined);
 			}
 
-			this.$root.menu({
-				items: menu,
-				source: this.$refs.menuButton,
+			if (noteActions.length > 0) {
+				menu = menu.concat([null, ...noteActions.map(action => ({
+					icon: 'fas fa-plug',
+					text: action.title,
+					action: () => {
+						action.handler(this.appearNote);
+					}
+				}))]);
+			}
+
+			return menu;
+		},
+
+		onContextmenu(e) {
+			const isLink = (el: HTMLElement) => {
+				if (el.tagName === 'A') return true;
+				if (el.parentElement) {
+					return isLink(el.parentElement);
+				}
+			};
+			if (isLink(e.target)) return;
+			if (window.getSelection().toString() !== '') return;
+
+			if (this.$store.state.useReactionPickerForContextMenu) {
+				e.preventDefault();
+				this.react();
+			} else {
+				os.contextMenu(this.getMenu(), e).then(this.focus);
+			}
+		},
+
+		menu(viaKeyboard = false) {
+			os.modalMenu(this.getMenu(), this.$refs.menuButton, {
 				viaKeyboard
 			}).then(this.focus);
 		},
 
 		showRenoteMenu(viaKeyboard = false) {
-			if (!this.$store.getters.isSignedIn || (this.$store.state.i.id !== this.note.userId)) return;
-			this.$root.menu({
-				items: [{
-					text: this.$t('unrenote'),
-					icon: faTrashAlt,
-					action: () => {
-						this.$root.api('notes/delete', {
-							noteId: this.note.id
-						});
-						Vue.set(this.note, 'deletedAt', new Date());
-					}
-				}],
-				source: this.$refs.renoteTime,
+			if (!this.isMyRenote) return;
+			os.modalMenu([{
+				text: this.$ts.unrenote,
+				icon: 'fas fa-trash-alt',
+				danger: true,
+				action: () => {
+					os.api('notes/delete', {
+						noteId: this.note.id
+					});
+					this.isDeleted = true;
+				}
+			}], this.$refs.renoteTime, {
 				viaKeyboard: viaKeyboard
 			});
 		},
@@ -626,59 +746,84 @@ export default Vue.extend({
 
 		copyContent() {
 			copyToClipboard(this.appearNote.text);
-			this.$root.dialog({
-				type: 'success',
-				iconOnly: true, autoClose: true
-			});
+			os.success();
 		},
 
 		copyLink() {
 			copyToClipboard(`${url}/notes/${this.appearNote.id}`);
-			this.$root.dialog({
-				type: 'success',
-				iconOnly: true, autoClose: true
-			});
+			os.success();
 		},
 
 		togglePin(pin: boolean) {
-			this.$root.api(pin ? 'i/pin' : 'i/unpin', {
+			os.apiWithDialog(pin ? 'i/pin' : 'i/unpin', {
 				noteId: this.appearNote.id
-			}).then(() => {
-				this.$root.dialog({
-					type: 'success',
-					iconOnly: true, autoClose: true
-				});
-			}).catch(e => {
+			}, undefined, null, e => {
 				if (e.id === '72dab508-c64d-498f-8740-a8eec1ba385a') {
-					this.$root.dialog({
+					os.dialog({
 						type: 'error',
-						text: this.$t('pinLimitExceeded')
+						text: this.$ts.pinLimitExceeded
 					});
 				}
 			});
 		},
 
+		async clip() {
+			const clips = await os.api('clips/list');
+			os.modalMenu([{
+				icon: 'fas fa-plus',
+				text: this.$ts.createNew,
+				action: async () => {
+					const { canceled, result } = await os.form(this.$ts.createNewClip, {
+						name: {
+							type: 'string',
+							label: this.$ts.name
+						},
+						description: {
+							type: 'string',
+							required: false,
+							multiline: true,
+							label: this.$ts.description
+						},
+						isPublic: {
+							type: 'boolean',
+							label: this.$ts.public,
+							default: false
+						}
+					});
+					if (canceled) return;
+
+					const clip = await os.apiWithDialog('clips/create', result);
+
+					os.apiWithDialog('clips/add-note', { clipId: clip.id, noteId: this.appearNote.id });
+				}
+			}, null, ...clips.map(clip => ({
+				text: clip.name,
+				action: () => {
+					os.apiWithDialog('clips/add-note', { clipId: clip.id, noteId: this.appearNote.id });
+				}
+			}))], this.$refs.menuButton, {
+			}).then(this.focus);
+		},
+
 		async promote() {
-			const { canceled, result: days } = await this.$root.dialog({
-				title: this.$t('numberOfDays'),
+			const { canceled, result: days } = await os.dialog({
+				title: this.$ts.numberOfDays,
 				input: { type: 'number' }
 			});
 
 			if (canceled) return;
 
-			this.$root.api('admin/promo/create', {
+			os.apiWithDialog('admin/promo/create', {
 				noteId: this.appearNote.id,
 				expiresAt: Date.now() + (86400000 * days)
-			}).then(() => {
-				this.$root.dialog({
-					type: 'success',
-					iconOnly: true, autoClose: true
-				});
-			}).catch(e => {
-				this.$root.dialog({
-					type: 'error',
-					text: e
-				});
+			});
+		},
+
+		share() {
+			navigator.share({
+				title: this.$t('noteOf', { user: this.appearNote.user.name }),
+				text: this.appearNote.text,
+				url: `${url}/notes/${this.appearNote.id}`
 			});
 		},
 
@@ -696,16 +841,276 @@ export default Vue.extend({
 
 		focusAfter() {
 			focusNext(this.$el);
-		}
+		},
+
+		userPage
 	}
 });
 </script>
 
 <style lang="scss" scoped>
-.note {
+.tkcbzcuz {
 	position: relative;
 	transition: box-shadow 0.1s ease;
-	overflow: hidden;
+	overflow: clip;
+	contain: content;
+
+	// これらの指定はパフォーマンス向上には有効だが、ノートの高さは一定でないため、
+	// 下の方までスクロールすると上のノートの高さがここで決め打ちされたものに変化し、表示しているノートの位置が変わってしまう
+	// ノートがマウントされたときに自身の高さを取得し contain-intrinsic-size を設定しなおせばほぼ解決できそうだが、
+	// 今度はその処理自体がパフォーマンス低下の原因にならないか懸念される。また、被リアクションでも高さは変化するため、やはり多少のズレは生じる
+	// 一度レンダリングされた要素はブラウザがよしなにサイズを覚えておいてくれるような実装になるまで待った方が良さそう(なるのか？)
+	//content-visibility: auto;
+  //contain-intrinsic-size: 0 128px;
+
+	&:focus {
+		outline: none;
+
+		&:after {
+			content: "";
+			pointer-events: none;
+			display: block;
+			position: absolute;
+			z-index: 10;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			margin: auto;
+			width: calc(100% - 8px);
+			height: calc(100% - 8px);
+			border: dashed 1px var(--focus);
+			border-radius: var(--radius);
+			box-sizing: border-box;
+		}
+	}
+
+	&:hover > .article > .main > .footer > .button {
+		opacity: 1;
+	}
+
+	> .info {
+		display: flex;
+		align-items: center;
+		padding: 16px 32px 8px 32px;
+		line-height: 24px;
+		font-size: 90%;
+		white-space: pre;
+		color: #d28a3f;
+
+		> i {
+			margin-right: 4px;
+		}
+
+		> .hide {
+			margin-left: auto;
+			color: inherit;
+		}
+	}
+
+	> .info + .article {
+		padding-top: 8px;
+	}
+
+	> .reply-to {
+		opacity: 0.7;
+		padding-bottom: 0;
+	}
+
+	> .renote {
+		display: flex;
+		align-items: center;
+		padding: 16px 32px 8px 32px;
+		line-height: 28px;
+		white-space: pre;
+		color: var(--renote);
+
+		> .avatar {
+			flex-shrink: 0;
+			display: inline-block;
+			width: 28px;
+			height: 28px;
+			margin: 0 8px 0 0;
+			border-radius: 6px;
+		}
+
+		> i {
+			margin-right: 4px;
+		}
+
+		> span {
+			overflow: hidden;
+			flex-shrink: 1;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+
+			> .name {
+				font-weight: bold;
+			}
+		}
+
+		> .info {
+			margin-left: auto;
+			font-size: 0.9em;
+
+			> .time {
+				flex-shrink: 0;
+				color: inherit;
+
+				> .dropdownIcon {
+					margin-right: 4px;
+				}
+			}
+
+			> .visibility {
+				margin-left: 8px;
+			}
+
+			> .localOnly {
+				margin-left: 8px;
+			}
+		}
+	}
+
+	> .renote + .article {
+		padding-top: 8px;
+	}
+
+	> .article {
+		display: flex;
+		padding: 28px 32px 18px;
+
+		> .avatar {
+			flex-shrink: 0;
+			display: block;
+			margin: 0 14px 8px 0;
+			width: 58px;
+			height: 58px;
+			position: sticky;
+			top: calc(22px + var(--stickyTop, 0px));
+			left: 0;
+		}
+
+		> .main {
+			flex: 1;
+			min-width: 0;
+
+			> .body {
+				> .cw {
+					cursor: default;
+					display: block;
+					margin: 0;
+					padding: 0;
+					overflow-wrap: break-word;
+
+					> .text {
+						margin-right: 8px;
+					}
+				}
+
+				> .content {
+					&.collapsed {
+						position: relative;
+						max-height: 9em;
+						overflow: hidden;
+
+						> .fade {
+							display: block;
+							position: absolute;
+							bottom: 0;
+							left: 0;
+							width: 100%;
+							height: 64px;
+							background: linear-gradient(0deg, var(--panel), var(--X15));
+
+							> span {
+								display: inline-block;
+								background: var(--panel);
+								padding: 6px 10px;
+								font-size: 0.8em;
+								border-radius: 999px;
+								box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
+							}
+
+							&:hover {
+								> span {
+									background: var(--panelHighlight);
+								}
+							}
+						}
+					}
+
+					> .text {
+						overflow-wrap: break-word;
+
+						> .reply {
+							color: var(--accent);
+							margin-right: 0.5em;
+						}
+
+						> .rp {
+							margin-left: 4px;
+							font-style: oblique;
+							color: var(--renote);
+						}
+					}
+
+					> .url-preview {
+						margin-top: 8px;
+					}
+
+					> .poll {
+						font-size: 80%;
+					}
+
+					> .renote {
+						padding: 8px 0;
+
+						> * {
+							padding: 16px;
+							border: dashed 1px var(--renote);
+							border-radius: 8px;
+						}
+					}
+				}
+
+				> .channel {
+					opacity: 0.7;
+					font-size: 80%;
+				}
+			}
+
+			> .footer {
+				> .button {
+					margin: 0;
+					padding: 8px;
+					opacity: 0.7;
+
+					&:not(:last-child) {
+						margin-right: 28px;
+					}
+
+					&:hover {
+						color: var(--fgHighlighted);
+					}
+
+					> .count {
+						display: inline;
+						margin: 0 0 0 8px;
+						opacity: 0.7;
+					}
+
+					&.reacted {
+						color: var(--accent);
+					}
+				}
+			}
+		}
+	}
+
+	> .reply {
+		border-top: solid 0.5px var(--divider);
+	}
 
 	&.max-width_500px {
 		font-size: 0.9em;
@@ -716,6 +1121,10 @@ export default Vue.extend({
 			padding: 8px 16px 0 16px;
 		}
 
+		> .info {
+			padding: 8px 16px 0 16px;
+		}
+
 		> .article {
 			padding: 14px 16px 9px;
 
@@ -723,6 +1132,7 @@ export default Vue.extend({
 				margin: 0 10px 8px 0;
 				width: 50px;
 				height: 50px;
+				top: calc(14px + var(--stickyTop, 0px));
 			}
 		}
 	}
@@ -761,204 +1171,11 @@ export default Vue.extend({
 			}
 		}
 	}
+}
 
-	&:focus {
-		outline: none;
-		box-shadow: 0 0 0 3px var(--focus);
-	}
-
-	&:hover > .article > .main > .footer > .button {
-		opacity: 1;
-	}
-
-	> .info {
-		display: flex;
-		align-items: center;
-		padding: 16px 32px 8px 32px;
-		line-height: 24px;
-		font-size: 90%;
-		white-space: pre;
-		color: #d28a3f;
-
-		@media (max-width: 450px) {
-			padding: 8px 16px 0 16px;
-		}
-
-		> [data-icon] {
-			margin-right: 4px;
-		}
-
-		> .hide {
-			margin-left: auto;
-			color: inherit;
-		}
-	}
-
-	> .info + .article {
-		padding-top: 8px;
-	}
-
-	> .reply-to {
-		opacity: 0.7;
-		padding-bottom: 0;
-	}
-
-	> .renote {
-		display: flex;
-		align-items: center;
-		padding: 16px 32px 8px 32px;
-		line-height: 28px;
-		white-space: pre;
-		color: var(--renote);
-
-		> .avatar {
-			flex-shrink: 0;
-			display: inline-block;
-			width: 28px;
-			height: 28px;
-			margin: 0 8px 0 0;
-			border-radius: 6px;
-		}
-
-		> [data-icon] {
-			margin-right: 4px;
-		}
-
-		> span {
-			overflow: hidden;
-			flex-shrink: 1;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-
-			> .name {
-				font-weight: bold;
-			}
-		}
-
-		> .info {
-			margin-left: auto;
-			font-size: 0.9em;
-
-			> .time {
-				flex-shrink: 0;
-				color: inherit;
-			}
-
-			> .visibility {
-				margin-left: 8px;
-
-				[data-icon] {
-					margin-right: 0;
-				}
-			}
-		}
-	}
-
-	> .renote + .article {
-		padding-top: 8px;
-	}
-
-	> .article {
-		display: flex;
-		padding: 28px 32px 18px;
-
-		> .avatar {
-			flex-shrink: 0;
-			display: block;
-			//position: sticky;
-			//top: 72px;
-			margin: 0 14px 8px 0;
-			width: 58px;
-			height: 58px;
-		}
-
-		> .main {
-			flex: 1;
-			min-width: 0;
-
-			> .body {
-				> .cw {
-					cursor: default;
-					display: block;
-					margin: 0;
-					padding: 0;
-					overflow-wrap: break-word;
-
-					> .text {
-						margin-right: 8px;
-					}
-				}
-
-				> .content {
-					> .text {
-						overflow-wrap: break-word;
-
-						> .reply {
-							color: var(--accent);
-							margin-right: 0.5em;
-						}
-
-						> .rp {
-							margin-left: 4px;
-							font-style: oblique;
-							color: var(--renote);
-						}
-					}
-
-					> .url-preview {
-						margin-top: 8px;
-					}
-
-					> .mk-poll {
-						font-size: 80%;
-					}
-
-					> .renote {
-						padding: 8px 0;
-
-						> * {
-							padding: 16px;
-							border: dashed 1px var(--renote);
-							border-radius: 8px;
-						}
-					}
-				}
-			}
-
-			> .footer {
-				> .button {
-					margin: 0;
-					padding: 8px;
-					opacity: 0.7;
-
-					&:not(:last-child) {
-						margin-right: 28px;
-					}
-
-					&:hover {
-						color: var(--fgHighlighted);
-					}
-
-					> .count {
-						display: inline;
-						margin: 0 0 0 8px;
-						opacity: 0.7;
-					}
-
-					&.reacted {
-						color: var(--accent);
-					}
-				}
-			}
-
-			> .deleted {
-				opacity: 0.7;
-			}
-		}
-	}
-
-	> .reply {
-		border-top: solid 1px var(--divider);
-	}
+.muted {
+	padding: 8px;
+	text-align: center;
+	opacity: 0.7;
 }
 </style>

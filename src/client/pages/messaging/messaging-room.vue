@@ -1,60 +1,89 @@
 <template>
-<div class="mk-messaging-room naked"
+<div class="_section"
 	@dragover.prevent.stop="onDragover"
 	@drop.prevent.stop="onDrop"
 >
-	<template v-if="!fetching && user">
-		<portal to="title"><mk-user-name :user="user" :nowrap="false" class="name"/></portal>
-		<portal to="avatar"><mk-avatar class="avatar" :user="user" :disable-preview="true"/></portal>
-	</template>
-	<template v-if="!fetching && group">
-		<portal to="icon"><fa :icon="faUsers"/></portal>
-		<portal to="title">{{ group.name }}</portal>
-	</template>
-
-	<div class="body">
-		<mk-loading v-if="fetching"/>
-		<p class="empty" v-if="!fetching && messages.length == 0"><fa :icon="faInfoCircle"/>{{ $t('noMessagesYet') }}</p>
-		<p class="no-history" v-if="!fetching && messages.length > 0 && !existMoreMessages"><fa :icon="faFlag"/>{{ $t('noMoreHistory') }}</p>
-		<button class="more _button" :class="{ fetching: fetchingMoreMessages }" v-if="existMoreMessages" @click="fetchMoreMessages" :disabled="fetchingMoreMessages">
-			<template v-if="fetchingMoreMessages"><fa icon="spinner" pulse fixed-width/></template>{{ fetchingMoreMessages ? $t('loading') : $t('loadMore') }}
-		</button>
-		<x-list class="messages" :items="messages" v-slot="{ item: message }" direction="up" reversed>
-			<x-message :message="message" :is-group="group != null" :key="message.id"/>
-		</x-list>
-	</div>
-	<footer>
-		<transition name="fade">
-			<div class="new-message" v-show="showIndicator">
-				<button class="_buttonPrimary" @click="onIndicatorClick"><i><fa :icon="faArrowCircleDown"/></i>{{ $t('newMessageExists') }}</button>
+	<div class="_content mk-messaging-room">
+		<div class="body">
+			<MkLoading v-if="fetching"/>
+			<p class="empty" v-if="!fetching && messages.length == 0"><i class="fas fa-info-circle"></i>{{ $ts.noMessagesYet }}</p>
+			<p class="no-history" v-if="!fetching && messages.length > 0 && !existMoreMessages"><i class="fas fa-flag"></i>{{ $ts.noMoreHistory }}</p>
+			<button class="more _button" ref="loadMore" :class="{ fetching: fetchingMoreMessages }" v-show="existMoreMessages" @click="fetchMoreMessages" :disabled="fetchingMoreMessages">
+				<template v-if="fetchingMoreMessages"><i class="fas fa-spinner fa-pulse fa-fw"></i></template>{{ fetchingMoreMessages ? $ts.loading : $ts.loadMore }}
+			</button>
+			<XList class="messages" :items="messages" v-slot="{ item: message }" direction="up" reversed>
+				<XMessage :message="message" :is-group="group != null" :key="message.id"/>
+			</XList>
+		</div>
+		<footer>
+			<div class="typers" v-if="typers.length > 0">
+				<I18n :src="$ts.typingUsers" text-tag="span" class="users">
+					<template #users>
+						<b v-for="user in typers" :key="user.id" class="user">{{ user.username }}</b>
+					</template>
+				</I18n>
+				<MkEllipsis/>
 			</div>
-		</transition>
-		<x-form v-if="!fetching" :user="user" :group="group" ref="form"/>
-	</footer>
+			<transition name="fade">
+				<div class="new-message" v-show="showIndicator">
+					<button class="_buttonPrimary" @click="onIndicatorClick"><i class="fas fa-arrow-circle-down"></i>{{ $ts.newMessageExists }}</button>
+				</div>
+			</transition>
+			<XForm v-if="!fetching" :user="user" :group="group" ref="form"/>
+		</footer>
+	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faArrowCircleDown, faFlag, faUsers, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../../i18n';
-import XList from '../../components/date-separated-list.vue';
+import { computed, defineComponent } from 'vue';
+import XList from '@client/components/date-separated-list.vue';
 import XMessage from './messaging-room.message.vue';
 import XForm from './messaging-room.form.vue';
-import { url } from '../../config';
-import parseAcct from '../../../misc/acct/parse';
+import parseAcct from '@/misc/acct/parse';
+import { isBottom, onScrollBottom, scroll } from '@client/scripts/scroll';
+import * as os from '@client/os';
+import { popout } from '@client/scripts/popout';
+import * as sound from '@client/scripts/sound';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	i18n,
-
+const Component = defineComponent({
 	components: {
 		XMessage,
 		XForm,
 		XList,
 	},
 
+	inject: ['inWindow'],
+
+	props: {
+		userAcct: {
+			type: String,
+			required: false,
+		},
+		groupId: {
+			type: String,
+			required: false,
+		},
+	},
+
 	data() {
 		return {
+			[symbols.PAGE_INFO]: computed(() => !this.fetching ? this.user ? {
+				userName: this.user,
+				avatar: this.user,
+				action: {
+					icon: 'fas fa-ellipsis-h',
+					handler: this.menu,
+				},
+			} : {
+				title: this.group.name,
+				icon: 'fas fa-users',
+				action: {
+					icon: 'fas fa-ellipsis-h',
+					handler: this.menu,
+				},
+			} : null),
 			fetching: true,
 			user: null,
 			group: null,
@@ -64,7 +93,14 @@ export default Vue.extend({
 			connection: null,
 			showIndicator: false,
 			timer: null,
-			faArrowCircleDown, faFlag, faUsers, faInfoCircle
+			typers: [],
+			ilObserver: new IntersectionObserver(
+				(entries) => entries.some((entry) => entry.isIntersecting)
+					&& !this.fetching
+					&& !this.fetchingMoreMessages
+					&& this.existMoreMessages
+					&& this.fetchMoreMessages()
+			),
 		};
 	},
 
@@ -75,33 +111,37 @@ export default Vue.extend({
 	},
 
 	watch: {
-		$route: 'fetch'
+		userAcct: 'fetch',
+		groupId: 'fetch',
 	},
 
 	mounted() {
 		this.fetch();
+		if (this.$store.state.enableInfiniteScroll) {
+			this.$nextTick(() => this.ilObserver.observe(this.$refs.loadMore as Element));
+		}
 	},
 
-	beforeDestroy() {
+	beforeUnmount() {
 		this.connection.dispose();
 
-		window.removeEventListener('scroll', this.onScroll);
-
 		document.removeEventListener('visibilitychange', this.onVisibilitychange);
+
+		this.ilObserver.disconnect();
 	},
 
 	methods: {
 		async fetch() {
 			this.fetching = true;
-			if (this.$route.params.user) {
-				const user = await this.$root.api('users/show', parseAcct(this.$route.params.user));
+			if (this.userAcct) {
+				const user = await os.api('users/show', parseAcct(this.userAcct));
 				this.user = user;
 			} else {
-				const group = await this.$root.api('users/groups/show', { groupId: this.$route.params.group });
+				const group = await os.api('users/groups/show', { groupId: this.groupId });
 				this.group = group;
 			}
 
-			this.connection = this.$root.stream.connectToChannel('messaging', {
+			this.connection = os.stream.connectToChannel('messaging', {
 				otherparty: this.user ? this.user.id : undefined,
 				group: this.group ? this.group.id : undefined,
 			});
@@ -109,20 +149,25 @@ export default Vue.extend({
 			this.connection.on('message', this.onMessage);
 			this.connection.on('read', this.onRead);
 			this.connection.on('deleted', this.onDeleted);
-
-			window.addEventListener('scroll', this.onScroll, { passive: true });
+			this.connection.on('typers', typers => {
+				this.typers = typers.filter(u => u.id !== this.$i.id);
+			});
 
 			document.addEventListener('visibilitychange', this.onVisibilitychange);
 
 			this.fetchMessages().then(() => {
-				this.fetching = false;
 				this.scrollToBottom();
+
+				// もっと見るの交差検知を発火させないためにfetchは
+				// スクロールが終わるまでfalseにしておく
+				// scrollendのようなイベントはないのでsetTimeoutで
+				setTimeout(() => this.fetching = false, 300);
 			});
 		},
 
 		onDragover(e) {
 			const isFile = e.dataTransfer.items[0].kind == 'file';
-			const isDriveFile = e.dataTransfer.types[0] == 'mk_drive_file';
+			const isDriveFile = e.dataTransfer.types[0] == _DATA_TRANSFER_DRIVE_FILE_;
 
 			if (isFile || isDriveFile) {
 				e.dataTransfer.dropEffect = e.dataTransfer.effectAllowed == 'all' ? 'copy' : 'move';
@@ -137,15 +182,15 @@ export default Vue.extend({
 				this.form.upload(e.dataTransfer.files[0]);
 				return;
 			} else if (e.dataTransfer.files.length > 1) {
-				this.$root.dialog({
+				os.dialog({
 					type: 'error',
-					text: this.$t('onlyOneFileCanBeAttached')
+					text: this.$ts.onlyOneFileCanBeAttached
 				});
 				return;
 			}
 
 			//#region ドライブのファイル
-			const driveFile = e.dataTransfer.getData('mk_drive_file');
+			const driveFile = e.dataTransfer.getData(_DATA_TRANSFER_DRIVE_FILE_);
 			if (driveFile != null && driveFile != '') {
 				const file = JSON.parse(driveFile);
 				this.form.file = file;
@@ -157,7 +202,7 @@ export default Vue.extend({
 			return new Promise((resolve, reject) => {
 				const max = this.existMoreMessages ? 20 : 10;
 
-				this.$root.api('messaging/messages', {
+				os.api('messaging/messages', {
 					userId: this.user ? this.user.id : undefined,
 					groupId: this.group ? this.group.id : undefined,
 					limit: max + 1,
@@ -184,23 +229,23 @@ export default Vue.extend({
 		},
 
 		onMessage(message) {
-			this.$root.sound('chat');
+			sound.play('chat');
 
-			const isBottom = this.isBottom();
+			const _isBottom = isBottom(this.$el, 64);
 
 			this.messages.push(message);
-			if (message.userId != this.$store.state.i.id && !document.hidden) {
+			if (message.userId != this.$i.id && !document.hidden) {
 				this.connection.send('read', {
 					id: message.id
 				});
 			}
 
-			if (isBottom) {
+			if (_isBottom) {
 				// Scroll to bottom
 				this.$nextTick(() => {
 					this.scrollToBottom();
 				});
-			} else if (message.userId != this.$store.state.i.id) {
+			} else if (message.userId != this.$i.id) {
 				// Notify
 				this.notifyNewMessage();
 			}
@@ -212,14 +257,20 @@ export default Vue.extend({
 				for (const id of x) {
 					if (this.messages.some(x => x.id == id)) {
 						const exist = this.messages.map(x => x.id).indexOf(id);
-						this.messages[exist].isRead = true;
+						this.messages[exist] = {
+							...this.messages[exist],
+							isRead: true,
+						};
 					}
 				}
 			} else if (this.group) {
 				for (const id of x.ids) {
 					if (this.messages.some(x => x.id == id)) {
 						const exist = this.messages.map(x => x.id).indexOf(id);
-						this.messages[exist].reads.push(x.userId);
+						this.messages[exist] = {
+							...this.messages[exist],
+							reads: [...this.messages[exist].reads, x.userId]
+						};
 					}
 				}
 			}
@@ -232,19 +283,8 @@ export default Vue.extend({
 			}
 		},
 
-		isBottom() {
-			const asobi = 64;
-			const current = this.isNaked
-				? window.scrollY + window.innerHeight
-				: this.$el.scrollTop + this.$el.offsetHeight;
-			const max = this.isNaked
-				? document.body.offsetHeight
-				: this.$el.scrollHeight;
-			return current > (max - asobi);
-		},
-
 		scrollToBottom() {
-			window.scroll(0, document.body.offsetHeight);
+			scroll(this.$el, this.$el.offsetHeight);
 		},
 
 		onIndicatorClick() {
@@ -255,6 +295,10 @@ export default Vue.extend({
 		notifyNewMessage() {
 			this.showIndicator = true;
 
+			onScrollBottom(this.$el, () => {
+				this.showIndicator = false;
+			});
+
 			if (this.timer) clearTimeout(this.timer);
 
 			this.timer = setTimeout(() => {
@@ -262,34 +306,45 @@ export default Vue.extend({
 			}, 4000);
 		},
 
-		onScroll() {
-			const el = this.isNaked ? window.document.documentElement : this.$el;
-			const current = el.scrollTop + el.clientHeight;
-			if (current > el.scrollHeight - 1) {
-				this.showIndicator = false;
-			}
-		},
-
 		onVisibilitychange() {
 			if (document.hidden) return;
 			for (const message of this.messages) {
-				if (message.userId !== this.$store.state.i.id && !message.isRead) {
+				if (message.userId !== this.$i.id && !message.isRead) {
 					this.connection.send('read', {
 						id: message.id
 					});
 				}
 			}
+		},
+
+		menu(ev) {
+			const path = this.groupId ? `/my/messaging/group/${this.groupId}` : `/my/messaging/${this.userAcct}`;
+
+			os.modalMenu([this.inWindow ? undefined : {
+				text: this.$ts.openInWindow,
+				icon: 'fas fa-window-maximize',
+				action: () => {
+					os.pageWindow(path);
+					this.$router.back();
+				},
+			}, this.inWindow ? undefined : {
+				text: this.$ts.popout,
+				icon: 'fas fa-external-link-alt',
+				action: () => {
+					popout(path);
+					this.$router.back();
+				},
+			}], ev.currentTarget || ev.target);
 		}
 	}
 });
+
+export default Component;
 </script>
 
 <style lang="scss" scoped>
 .mk-messaging-room {
-
 	> .body {
-		width: 100%;
-
 		> .empty {
 			width: 100%;
 			margin: 0;
@@ -298,7 +353,7 @@ export default Vue.extend({
 			font-size: 0.8em;
 			opacity: 0.5;
 
-			[data-icon] {
+			i {
 				margin-right: 4px;
 			}
 		}
@@ -312,7 +367,7 @@ export default Vue.extend({
 			color: var(--messagingRoomInfo);
 			opacity: 0.5;
 
-			[data-icon] {
+			i {
 				margin-right: 4px;
 			}
 		}
@@ -338,13 +393,13 @@ export default Vue.extend({
 				cursor: wait;
 			}
 
-			> [data-icon] {
+			> i {
 				margin-right: 4px;
 			}
 		}
 
 		> .messages {
-			> ::v-deep * {
+			> ::v-deep(*) {
 				margin-bottom: 16px;
 			}
 		}
@@ -352,6 +407,7 @@ export default Vue.extend({
 
 	> footer {
 		width: 100%;
+		position: relative;
 
 		> .new-message {
 			position: absolute;
@@ -377,6 +433,25 @@ export default Vue.extend({
 				}
 			}
 		}
+
+		> .typers {
+			position: absolute;
+			bottom: 100%;
+			padding: 0 8px 0 8px;
+			font-size: 0.9em;
+			color: var(--fgTransparentWeak);
+
+			> .users {
+				> .user + .user:before {
+					content: ", ";
+					font-weight: normal;
+				}
+
+				> .user:last-of-type:after {
+					content: " ";
+				}
+			}
+		}
 	}
 }
 
@@ -384,7 +459,7 @@ export default Vue.extend({
 	transition: opacity 0.1s;
 }
 
-.fade-enter, .fade-leave-to {
+.fade-enter-from, .fade-leave-to {
 	transition: opacity 0.5s;
 	opacity: 0;
 }

@@ -1,31 +1,23 @@
 <template>
-<div class="qkcjvfiv">
-	<portal to="icon"><fa :icon="faListUl"/></portal>
-	<portal to="title">{{ $t('manageLists') }}</portal>
+<div class="qkcjvfiv _section">
+	<MkButton @click="create" primary class="add"><i class="fas fa-plus"></i> {{ $ts.createList }}</MkButton>
 
-	<mk-button @click="create" primary class="add"><fa :icon="faPlus"/> {{ $t('createList') }}</mk-button>
-
-	<mk-pagination :pagination="pagination" #default="{items}" class="lists" ref="list">
+	<MkPagination :pagination="pagination" #default="{items}" class="lists _content" ref="list">
 		<div class="list _panel" v-for="(list, i) in items" :key="list.id">
-			<router-link :to="`/my/lists/${ list.id }`">{{ list.name }}</router-link>
+			<MkA :to="`/my/lists/${ list.id }`">{{ list.name }}</MkA>
 		</div>
-	</mk-pagination>
+	</MkPagination>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faListUl, faPlus } from '@fortawesome/free-solid-svg-icons';
-import MkPagination from '../../components/ui/pagination.vue';
-import MkButton from '../../components/ui/button.vue';
+import { defineComponent } from 'vue';
+import MkPagination from '@client/components/ui/pagination.vue';
+import MkButton from '@client/components/ui/button.vue';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	metaInfo() {
-		return {
-			title: this.$t('manageLists') as string,
-		};
-	},
-
+export default defineComponent({
 	components: {
 		MkPagination,
 		MkButton,
@@ -33,27 +25,31 @@ export default Vue.extend({
 
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.manageLists,
+				icon: 'fas fa-list-ul',
+				action: {
+					icon: 'fas fa-plus',
+					handler: this.create
+				}
+			},
 			pagination: {
 				endpoint: 'users/lists/list',
 				limit: 10,
 			},
-			faListUl, faPlus
 		};
 	},
 
 	methods: {
 		async create() {
-			const { canceled, result: name } = await this.$root.dialog({
-				title: this.$t('enterListName'),
+			const { canceled, result: name } = await os.dialog({
+				title: this.$ts.enterListName,
 				input: true
 			});
 			if (canceled) return;
-			await this.$root.api('users/lists/create', { name: name });
+			await os.api('users/lists/create', { name: name });
 			this.$refs.list.reload();
-			this.$root.dialog({
-				type: 'success',
-				iconOnly: true, autoClose: true
-			});
+			os.success();
 		},
 	}
 });

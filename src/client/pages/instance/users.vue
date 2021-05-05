@@ -1,201 +1,231 @@
 <template>
-<div class="mk-instance-users">
-	<portal to="icon"><fa :icon="faUsers"/></portal>
-	<portal to="title">{{ $t('users') }}</portal>
+<div class="lknzcolw">
+	<div class="actions">
+		<MkButton inline primary @click="addUser()"><i class="fas fa-plus"></i> {{ $ts.addUser }}</MkButton>
+		<MkButton inline primary @click="lookupUser()"><i class="fas fa-search"></i> {{ $ts.lookup }}</MkButton>
+	</div>
 
-	<section class="_card lookup">
-		<div class="_title"><fa :icon="faSearch"/> {{ $t('lookup') }}</div>
-		<div class="_content">
-			<mk-input class="target" v-model="target" type="text" @enter="showUser()">
-				<span>{{ $t('usernameOrUserId') }}</span>
-			</mk-input>
-			<mk-button @click="showUser()" primary><fa :icon="faSearch"/> {{ $t('lookup') }}</mk-button>
+	<div class="users">
+		<div class="inputs" style="display: flex;">
+			<MkSelect v-model:value="sort" style="margin: 0; flex: 1;">
+				<template #label>{{ $ts.sort }}</template>
+				<option value="-createdAt">{{ $ts.registeredDate }} ({{ $ts.ascendingOrder }})</option>
+				<option value="+createdAt">{{ $ts.registeredDate }} ({{ $ts.descendingOrder }})</option>
+				<option value="-updatedAt">{{ $ts.lastUsed }} ({{ $ts.ascendingOrder }})</option>
+				<option value="+updatedAt">{{ $ts.lastUsed }} ({{ $ts.descendingOrder }})</option>
+			</MkSelect>
+			<MkSelect v-model:value="state" style="margin: 0; flex: 1;">
+				<template #label>{{ $ts.state }}</template>
+				<option value="all">{{ $ts.all }}</option>
+				<option value="available">{{ $ts.normal }}</option>
+				<option value="admin">{{ $ts.administrator }}</option>
+				<option value="moderator">{{ $ts.moderator }}</option>
+				<option value="silenced">{{ $ts.silence }}</option>
+				<option value="suspended">{{ $ts.suspend }}</option>
+			</MkSelect>
+			<MkSelect v-model:value="origin" style="margin: 0; flex: 1;">
+				<template #label>{{ $ts.instance }}</template>
+				<option value="combined">{{ $ts.all }}</option>
+				<option value="local">{{ $ts.local }}</option>
+				<option value="remote">{{ $ts.remote }}</option>
+			</MkSelect>
 		</div>
-		<div class="_footer">
-			<mk-button inline primary @click="search()"><fa :icon="faSearch"/> {{ $t('search') }}</mk-button>
+		<div class="inputs" style="display: flex; padding-top: 1.2em;">
+			<MkInput v-model:value="searchUsername" style="margin: 0; flex: 1;" type="text" spellcheck="false" @update:value="$refs.users.reload()">
+				<span>{{ $ts.username }}</span>
+			</MkInput>
+			<MkInput v-model:value="searchHost" style="margin: 0; flex: 1;" type="text" spellcheck="false" @update:value="$refs.users.reload()" :disabled="pagination.params().origin === 'local'">
+				<span>{{ $ts.host }}</span>
+			</MkInput>
 		</div>
-	</section>
 
-	<section class="_card users">
-		<div class="_title"><fa :icon="faUsers"/> {{ $t('users') }}</div>
-		<div class="_content _list">
-			<mk-pagination :pagination="pagination" #default="{items}" class="users" ref="users" :auto-margin="false">
-				<button class="user _button _listItem" v-for="(user, i) in items" :key="user.id" @click="show(user)">
-					<mk-avatar :user="user" class="avatar"/>
-					<div class="body">
-						<mk-user-name :user="user" class="name"/>
-						<mk-acct :user="user" class="acct"/>
+		<MkPagination :pagination="pagination" #default="{items}" class="users" ref="users">
+			<button class="user _panel _button _gap" v-for="user in items" :key="user.id" @click="show(user)">
+				<MkAvatar class="avatar" :user="user" :disable-link="true" :show-indicator="true"/>
+				<div class="body">
+					<header>
+						<MkUserName class="name" :user="user"/>
+						<span class="acct">@{{ acct(user) }}</span>
+						<span class="staff" v-if="user.isAdmin"><i class="fas fa-bookmark"></i></span>
+						<span class="staff" v-if="user.isModerator"><i class="far fa-bookmark"></i></span>
+						<span class="punished" v-if="user.isSilenced"><i class="fas fa-microphone-slash"></i></span>
+						<span class="punished" v-if="user.isSuspended"><i class="fas fa-snowflake"></i></span>
+					</header>
+					<div>
+						<span>{{ $ts.lastUsed }}: <MkTime v-if="user.updatedAt" :time="user.updatedAt" mode="detail"/></span>
 					</div>
-				</button>
-			</mk-pagination>
-		</div>
-		<div class="_footer">
-			<mk-button inline primary @click="addUser()"><fa :icon="faPlus"/> {{ $t('addUser') }}</mk-button>
-		</div>
-	</section>
+					<div>
+						<span>{{ $ts.registeredDate }}: <MkTime :time="user.createdAt" mode="detail"/></span>
+					</div>
+				</div>
+			</button>
+		</MkPagination>
+	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faPlus, faUsers, faSearch } from '@fortawesome/free-solid-svg-icons';
-import parseAcct from '../../../misc/acct/parse';
-import MkButton from '../../components/ui/button.vue';
-import MkInput from '../../components/ui/input.vue';
-import MkPagination from '../../components/ui/pagination.vue';
-import MkUserModerateDialog from '../../components/user-moderate-dialog.vue';
-import MkUserSelect from '../../components/user-select.vue';
+import { defineComponent } from 'vue';
+import MkButton from '@client/components/ui/button.vue';
+import MkInput from '@client/components/ui/input.vue';
+import MkSelect from '@client/components/ui/select.vue';
+import MkPagination from '@client/components/ui/pagination.vue';
+import { acct } from '../../filters/user';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
+import { lookupUser } from '@client/scripts/lookup-user';
 
-export default Vue.extend({
-	metaInfo() {
-		return {
-			title: `${this.$t('users')} | ${this.$t('instance')}`
-		};
-	},
-
+export default defineComponent({
 	components: {
 		MkButton,
 		MkInput,
+		MkSelect,
 		MkPagination,
 	},
 
+	emits: ['info'],
+
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.users,
+				icon: 'fas fa-users',
+				action: {
+					icon: 'fas fa-search',
+					handler: this.searchUser
+				}
+			},
+			sort: '+createdAt',
+			state: 'all',
+			origin: 'local',
+			searchUsername: '',
+			searchHost: '',
 			pagination: {
 				endpoint: 'admin/show-users',
 				limit: 10,
 				params: () => ({
-					sort: '+createdAt'
+					sort: this.sort,
+					state: this.state,
+					origin: this.origin,
+					username: this.searchUsername,
+					hostname: this.searchHost,
 				}),
 				offsetMode: true
 			},
-			target: '',
-			faPlus, faUsers, faSearch
 		}
 	},
 
-	methods: {
-		/** テキストエリアのユーザーを解決する */
-		fetchUser() {
-			return new Promise((res) => {
-				const usernamePromise = this.$root.api('users/show', parseAcct(this.target));
-				const idPromise = this.$root.api('users/show', { userId: this.target });
-				let _notFound = false;
-				const notFound = () => {
-					if (_notFound) {
-						this.$root.dialog({
-							type: 'error',
-							text: this.$t('noSuchUser')
-						});
-					} else {
-						_notFound = true;
-					}
-				};
-				usernamePromise.then(res).catch(e => {
-					if (e.code === 'NO_SUCH_USER') {
-						notFound();
-					}
-				});
-				idPromise.then(res).catch(e => {
-					notFound();
-				});
-			});
+	watch: {
+		sort() {
+			this.$refs.users.reload();
 		},
+		state() {
+			this.$refs.users.reload();
+		},
+		origin() {
+			this.$refs.users.reload();
+		},
+	},
 
-		/** テキストエリアから処理対象ユーザーを設定する */
-		async showUser() {
-			const user = await this.fetchUser();
-			this.$root.api('admin/show-user', { userId: user.id }).then(info => {
-				this.show(user, info);
+	async mounted() {
+		this.$emit('info', this[symbols.PAGE_INFO]);
+	},
+
+	methods: {
+		lookupUser,
+
+		searchUser() {
+			os.selectUser().then(user => {
+				this.show(user);
 			});
-			this.target = '';
 		},
 
 		async addUser() {
-			const { canceled: canceled1, result: username } = await this.$root.dialog({
-				title: this.$t('username'),
+			const { canceled: canceled1, result: username } = await os.dialog({
+				title: this.$ts.username,
 				input: true
 			});
 			if (canceled1) return;
 
-			const { canceled: canceled2, result: password } = await this.$root.dialog({
-				title: this.$t('password'),
+			const { canceled: canceled2, result: password } = await os.dialog({
+				title: this.$ts.password,
 				input: { type: 'password' }
 			});
 			if (canceled2) return;
 
-			const dialog = this.$root.dialog({
-				type: 'waiting',
-				iconOnly: true
-			});
-
-			this.$root.api('admin/accounts/create', {
+			os.apiWithDialog('admin/accounts/create', {
 				username: username,
 				password: password,
 			}).then(res => {
 				this.$refs.users.reload();
-				this.$root.dialog({
-					type: 'success',
-					iconOnly: true, autoClose: true
-				});
-			}).catch(e => {
-				this.$root.dialog({
-					type: 'error',
-					text: e.id
-				});
-			}).finally(() => {
-				dialog.close();
 			});
 		},
 
-		async show(user, info) {
-			if (info == null) info = await this.$root.api('admin/show-user', { userId: user.id });
-			this.$root.new(MkUserModerateDialog, {
-				user: { ...user, ...info }
-			});
+		show(user) {
+			os.pageWindow(`/user-info/${user.id}`);
 		},
 
-		search() {
-			this.$root.new(MkUserSelect, {}).$once('selected', user => {
-				this.$root.api('admin/show-user', { userId: user.id }).then(info => {
-					this.show(user, info);
-				});
-			});
-		}
+		acct
 	}
 });
 </script>
 
 <style lang="scss" scoped>
-.mk-instance-users {
-	> .users {
-		> ._content {
-			max-height: 300px;
-			overflow: auto;
-			
-			> .users {
-				> .user {
-					display: flex;
-					width: 100%;
-					box-sizing: border-box;
-					text-align: left;
-					align-items: center;
+.lknzcolw {
+	> .actions {
+		margin: var(--margin);
+	}
 
-					> .avatar {
-						width: 50px;
-						height: 50px;
+	> .users {
+		margin: var(--margin);
+	
+		> .users {
+			margin-top: var(--margin);
+
+			> .user {
+				display: flex;
+				width: 100%;
+				box-sizing: border-box;
+				text-align: left;
+				align-items: center;
+				padding: 16px;
+
+				&:hover {
+					color: var(--accent);
+				}
+
+				> .avatar {
+					width: 60px;
+					height: 60px;
+				}
+
+				> .body {
+					margin-left: 0.3em;
+					padding: 0 8px;
+					flex: 1;
+
+					@media (max-width: 500px) {
+						font-size: 14px;
 					}
 
-					> .body {
-						padding: 8px;
-
+					> header {
 						> .name {
-							display: block;
 							font-weight: bold;
 						}
 
 						> .acct {
-							opacity: 0.5;
+							margin-left: 8px;
+							opacity: 0.7;
+						}
+
+						> .staff {
+							margin-left: 0.5em;
+							color: var(--badge);
+						}
+
+						> .punished {
+							margin-left: 0.5em;
+							color: #4dabf7;
 						}
 					}
 				}

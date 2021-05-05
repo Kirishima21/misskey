@@ -1,51 +1,49 @@
 <template>
-<div v-if="$store.getters.isSignedIn">
-	<div class="waiting _card" v-if="state == 'waiting'">
+<div v-if="$i">
+	<div class="waiting _section" v-if="state == 'waiting'">
 		<div class="_content">
-			<mk-loading/>
+			<MkLoading/>
 		</div>
 	</div>
-	<div class="denied _card" v-if="state == 'denied'">
+	<div class="denied _section" v-if="state == 'denied'">
 		<div class="_content">
-			<p>{{ $t('_auth.denied') }}</p>
+			<p>{{ $ts._auth.denied }}</p>
 		</div>
 	</div>
-	<div class="accepted _card" v-else-if="state == 'accepted'">
+	<div class="accepted _section" v-else-if="state == 'accepted'">
 		<div class="_content">
-			<p v-if="callback">{{ $t('_auth.callback') }}<mk-ellipsis/></p>
-			<p v-else>{{ $t('_auth.pleaseGoBack') }}</p>
+			<p v-if="callback">{{ $ts._auth.callback }}<MkEllipsis/></p>
+			<p v-else>{{ $ts._auth.pleaseGoBack }}</p>
 		</div>
 	</div>
-	<div class="_card" v-else>
+	<div class="_section" v-else>
 		<div class="_title" v-if="name">{{ $t('_auth.shareAccess', { name: name }) }}</div>
-		<div class="_title" v-else>{{ $t('_auth.shareAccessAsk') }}</div>
+		<div class="_title" v-else>{{ $ts._auth.shareAccessAsk }}</div>
 		<div class="_content">
-			<p>{{ $t('_auth.permissionAsk') }}</p>
+			<p>{{ $ts._auth.permissionAsk }}</p>
 			<ul>
-				<template v-for="p in permission">
-					<li :key="p">{{ $t(`_permissions.${p}`) }}</li>
-				</template>
+				<li v-for="p in permission" :key="p">{{ $t(`_permissions.${p}`) }}</li>
 			</ul>
 		</div>
 		<div class="_footer">
-			<mk-button @click="deny" inline>{{ $t('cancel') }}</mk-button>
-			<mk-button @click="accept" inline primary>{{ $t('accept') }}</mk-button>
+			<MkButton @click="deny" inline>{{ $ts.cancel }}</MkButton>
+			<MkButton @click="accept" inline primary>{{ $ts.accept }}</MkButton>
 		</div>
 	</div>
 </div>
 <div class="signin" v-else>
-	<mk-signin @login="onLogin"/>
+	<MkSignin @login="onLogin"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../i18n';
-import MkSignin from '../components/signin.vue';
-import MkButton from '../components/ui/button.vue';
+import { defineComponent } from 'vue';
+import MkSignin from '@client/components/signin.vue';
+import MkButton from '@client/components/ui/button.vue';
+import * as os from '@client/os';
+import { login } from '@client/account';
 
-export default Vue.extend({
-	i18n,
+export default defineComponent({
 	components: {
 		MkSignin,
 		MkButton,
@@ -75,7 +73,7 @@ export default Vue.extend({
 	methods: {
 		async accept() {
 			this.state = 'waiting';
-			await this.$root.api('miauth/gen-token', {
+			await os.api('miauth/gen-token', {
 				session: this.session,
 				name: this.name,
 				iconUrl: this.icon,
@@ -91,8 +89,7 @@ export default Vue.extend({
 			this.state = 'denied';
 		},
 		onLogin(res) {
-			localStorage.setItem('i', res.i);
-			location.reload();
+			login(res.i);
 		}
 	}
 });

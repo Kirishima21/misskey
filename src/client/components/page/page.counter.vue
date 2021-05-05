@@ -1,40 +1,43 @@
 <template>
 <div>
-	<mk-button class="llumlmnx" @click="click()">{{ script.interpolate(value.text) }}</mk-button>
+	<MkButton class="llumlmnx" @click="click()">{{ hpml.interpolate(block.text) }}</MkButton>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { computed, defineComponent, PropType } from 'vue';
 import MkButton from '../ui/button.vue';
+import * as os from '@client/os';
+import { CounterVarBlock } from '@client/scripts/hpml/block';
+import { Hpml } from '@client/scripts/hpml/evaluator';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		MkButton
 	},
 	props: {
-		value: {
+		block: {
+			type: Object as PropType<CounterVarBlock>,
 			required: true
 		},
-		script: {
+		hpml: {
+			type: Object as PropType<Hpml>,
 			required: true
 		}
 	},
-	data() {
+	setup(props, ctx) {
+		const value = computed(() => {
+			return props.hpml.vars.value[props.block.name];
+		});
+
+		function click() {
+			props.hpml.updatePageVar(props.block.name, value.value + (props.block.inc || 1));
+			props.hpml.eval();
+		}
+
 		return {
-			v: 0,
+			click
 		};
-	},
-	watch: {
-		v() {
-			this.script.aiScript.updatePageVar(this.value.name, this.v);
-			this.script.eval();
-		}
-	},
-	methods: {
-		click() {
-			this.v = this.v + (this.value.inc || 1);
-		}
 	}
 });
 </script>

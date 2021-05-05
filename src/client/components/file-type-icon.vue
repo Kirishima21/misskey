@@ -1,14 +1,14 @@
 <template>
 <span class="mk-file-type-icon">
-	<template v-if="kind == 'image'"><fa :icon="faFileImage"/></template>
+	<template v-if="kind == 'image'"><i class="fas fa-file-image"></i></template>
 </span>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faFileImage } from '@fortawesome/free-solid-svg-icons';
+import { defineComponent } from 'vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		type: {
 			type: String,
@@ -17,7 +17,6 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			faFileImage
 		};
 	},
 	computed: {

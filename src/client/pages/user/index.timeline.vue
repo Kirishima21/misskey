@@ -1,21 +1,24 @@
 <template>
-<div class="kjeftjfm">
-	<div class="with">
-		<button class="_button" @click="with_ = null" :class="{ active: with_ === null }">{{ $t('notes') }}</button>
-		<button class="_button" @click="with_ = 'replies'" :class="{ active: with_ === 'replies' }">{{ $t('notesAndReplies') }}</button>
-		<button class="_button" @click="with_ = 'files'" :class="{ active: with_ === 'files' }">{{ $t('withFiles') }}</button>
-	</div>
-	<x-notes ref="timeline" :pagination="pagination" @before="$emit('before')" @after="e => $emit('after', e)"/>
+<div class="yrzkoczt" v-sticky-container>
+	<MkTab v-model:value="with_" class="_gap tab">
+		<option :value="null">{{ $ts.notes }}</option>
+		<option value="replies">{{ $ts.notesAndReplies }}</option>
+		<option value="files">{{ $ts.withFiles }}</option>
+	</MkTab>
+	<XNotes ref="timeline" :no-gap="true" :pagination="pagination" @before="$emit('before')" @after="e => $emit('after', e)"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import XNotes from '../../components/notes.vue';
+import { defineComponent } from 'vue';
+import XNotes from '@client/components/notes.vue';
+import MkTab from '@client/components/tab.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
-		XNotes
+		XNotes,
+		MkTab,
 	},
 
 	props: {
@@ -55,25 +58,9 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
-.kjeftjfm {
-	> .with {
-		display: flex;
-		margin-bottom: var(--margin);
-
-		@media (max-width: 500px) {
-			font-size: 80%;
-		}
-
-		> button {
-			flex: 1;
-			padding: 11px 8px 8px 8px;
-			border-bottom: solid 3px transparent;
-
-			&.active {
-				color: var(--accent);
-				border-bottom-color: var(--accent);
-			}
-		}
+.yrzkoczt {
+	> .tab {
+		background: var(--bg);
 	}
 }
 </style>

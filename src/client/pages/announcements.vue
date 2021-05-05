@@ -1,39 +1,28 @@
 <template>
-<div>
-	<portal to="icon"><fa :icon="faBroadcastTower"/></portal>
-	<portal to="title">{{ $t('announcements') }}</portal>
-
-	<mk-pagination :pagination="pagination" #default="{items}" class="ruryvtyk" ref="list">
-		<section class="_card announcement" v-for="(announcement, i) in items" :key="announcement.id">
-			<div class="_title"><span v-if="$store.getters.isSignedIn && !announcement.isRead">🆕 </span>{{ announcement.title }}</div>
+<div class="_section">
+	<MkPagination :pagination="pagination" #default="{items}" class="ruryvtyk _content">
+		<section class="_card announcement _gap" v-for="(announcement, i) in items" :key="announcement.id">
+			<div class="_title"><span v-if="$i && !announcement.isRead">🆕 </span>{{ announcement.title }}</div>
 			<div class="_content">
-				<mfm :text="announcement.text"/>
+				<Mfm :text="announcement.text"/>
 				<img v-if="announcement.imageUrl" :src="announcement.imageUrl"/>
 			</div>
-			<div class="_footer" v-if="$store.getters.isSignedIn && !announcement.isRead">
-				<mk-button @click="read(announcement)" primary><fa :icon="faCheck"/> {{ $t('gotIt') }}</mk-button>
+			<div class="_footer" v-if="$i && !announcement.isRead">
+				<MkButton @click="read(items, announcement, i)" primary><i class="fas fa-check"></i> {{ $ts.gotIt }}</MkButton>
 			</div>
 		</section>
-	</mk-pagination>
+	</MkPagination>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faCheck, faBroadcastTower } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../i18n';
-import MkPagination from '../components/ui/pagination.vue';
-import MkButton from '../components/ui/button.vue';
+import { defineComponent } from 'vue';
+import MkPagination from '@client/components/ui/pagination.vue';
+import MkButton from '@client/components/ui/button.vue';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	i18n,
-
-	metaInfo() {
-		return {
-			title: this.$t('announcements') as string
-		};
-	},
-
+export default defineComponent({
 	components: {
 		MkPagination,
 		MkButton
@@ -41,18 +30,25 @@ export default Vue.extend({
 
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.announcements,
+				icon: 'fas fa-broadcast-tower'
+			},
 			pagination: {
 				endpoint: 'announcements',
 				limit: 10,
 			},
-			faCheck, faBroadcastTower
 		};
 	},
 
 	methods: {
-		read(announcement) {
-			announcement.isRead = true;
-			this.$root.api('i/read-announcement', { announcementId: announcement.id });
+		// TODO: これは実質的に親コンポーネントから子コンポーネントのプロパティを変更してるのでなんとかしたい
+		read(items, announcement, i) {
+			items[i] = {
+				...announcement,
+				isRead: true,
+			};
+			os.api('i/read-announcement', { announcementId: announcement.id });
 		},
 	}
 });

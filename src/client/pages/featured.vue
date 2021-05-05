@@ -1,36 +1,31 @@
 <template>
-<div>
-	<portal to="icon"><fa :icon="faFireAlt"/></portal>
-	<portal to="title">{{ $t('featured') }}</portal>
-	<x-notes ref="notes" :pagination="pagination" @before="before" @after="after"/>
+<div class="_section">
+	<XNotes class="_content" ref="notes" :pagination="pagination" @before="before" @after="after"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faFireAlt } from '@fortawesome/free-solid-svg-icons';
-import Progress from '../scripts/loading';
-import XNotes from '../components/notes.vue';
+import { defineComponent } from 'vue';
+import Progress from '@client/scripts/loading';
+import XNotes from '@client/components/notes.vue';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	metaInfo() {
-		return {
-			title: this.$t('featured') as string
-		};
-	},
-
+export default defineComponent({
 	components: {
 		XNotes
 	},
 
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.featured,
+				icon: 'fas fa-fire-alt'
+			},
 			pagination: {
 				endpoint: 'notes/featured',
 				limit: 10,
 				offsetMode: true
 			},
-			faFireAlt
 		};
 	},
 

@@ -1,7 +1,8 @@
 <template>
 <div class="rghtznwe"
-	:data-draghover="draghover"
+	:class="{ draghover }"
 	@click="onClick"
+	@contextmenu.stop="onContextmenu"
 	@mouseover="onMouseover"
 	@mouseout="onMouseout"
 	@dragover.prevent.stop="onDragover"
@@ -14,37 +15,46 @@
 	:title="title"
 >
 	<p class="name">
-		<template v-if="hover"><fa :icon="faFolderOpen" fixed-width/></template>
-		<template v-if="!hover"><fa :icon="faFolder" fixed-width/></template>
+		<template v-if="hover"><i class="fas fa-folder-open fa-fw"></i></template>
+		<template v-if="!hover"><i class="fas fa-folder fa-fw"></i></template>
 		{{ folder.name }}
 	</p>
-	<p class="upload" v-if="$store.state.settings.uploadFolder == folder.id">
-		{{ $t('uploadFolder') }}
+	<p class="upload" v-if="$store.state.uploadFolder == folder.id">
+		{{ $ts.uploadFolder }}
 	</p>
+	<button v-if="selectMode" class="checkbox _button" :class="{ checked: isSelected }" @click.prevent.stop="checkboxClicked"></button>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faFolder, faFolderOpen } from '@fortawesome/free-regular-svg-icons';
-import i18n from '../i18n';
+import { defineComponent } from 'vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	props: {
 		folder: {
 			type: Object,
 			required: true,
+		},
+		isSelected: {
+			type: Boolean,
+			required: false,
+			default: false,
+		},
+		selectMode: {
+			type: Boolean,
+			required: false,
+			default: false,
 		}
 	},
+
+	emits: ['chosen'],
 
 	data() {
 		return {
 			hover: false,
 			draghover: false,
 			isDragging: false,
-			faFolder, faFolderOpen
 		};
 	},
 
@@ -56,7 +66,12 @@ export default Vue.extend({
 			return this.folder.name;
 		}
 	},
+
 	methods: {
+		checkboxClicked(e) {
+			this.$emit('chosen', this.folder);
+		},
+
 		onClick() {
 			this.browser.move(this.folder);
 		},
@@ -78,8 +93,8 @@ export default Vue.extend({
 			}
 
 			const isFile = e.dataTransfer.items[0].kind == 'file';
-			const isDriveFile = e.dataTransfer.types[0] == 'mk_drive_file';
-			const isDriveFolder = e.dataTransfer.types[0] == 'mk_drive_folder';
+			const isDriveFile = e.dataTransfer.types[0] == _DATA_TRANSFER_DRIVE_FILE_;
+			const isDriveFolder = e.dataTransfer.types[0] == _DATA_TRANSFER_DRIVE_FOLDER_;
 
 			if (isFile || isDriveFile || isDriveFolder) {
 				e.dataTransfer.dropEffect = e.dataTransfer.effectAllowed == 'all' ? 'copy' : 'move';
@@ -108,11 +123,11 @@ export default Vue.extend({
 			}
 
 			//#region ドライブのファイル
-			const driveFile = e.dataTransfer.getData('mk_drive_file');
+			const driveFile = e.dataTransfer.getData(_DATA_TRANSFER_DRIVE_FILE_);
 			if (driveFile != null && driveFile != '') {
 				const file = JSON.parse(driveFile);
 				this.browser.removeFile(file.id);
-				this.$root.api('drive/files/update', {
+				os.api('drive/files/update', {
 					fileId: file.id,
 					folderId: this.folder.id
 				});
@@ -120,7 +135,7 @@ export default Vue.extend({
 			//#endregion
 
 			//#region ドライブのフォルダ
-			const driveFolder = e.dataTransfer.getData('mk_drive_folder');
+			const driveFolder = e.dataTransfer.getData(_DATA_TRANSFER_DRIVE_FOLDER_);
 			if (driveFolder != null && driveFolder != '') {
 				const folder = JSON.parse(driveFolder);
 
@@ -128,7 +143,7 @@ export default Vue.extend({
 				if (folder.id == this.folder.id) return;
 
 				this.browser.removeFolder(folder.id);
-				this.$root.api('drive/folders/update', {
+				os.api('drive/folders/update', {
 					folderId: folder.id,
 					parentId: this.folder.id
 				}).then(() => {
@@ -136,15 +151,15 @@ export default Vue.extend({
 				}).catch(err => {
 					switch (err) {
 						case 'detected-circular-definition':
-							this.$root.dialog({
-								title: this.$t('unableToProcess'),
-								text: this.$t('circularReferenceFolder')
+							os.dialog({
+								title: this.$ts.unableToProcess,
+								text: this.$ts.circularReferenceFolder
 							});
 							break;
 						default:
-							this.$root.dialog({
+							os.dialog({
 								type: 'error',
-								text: this.$t('error')
+								text: this.$ts.somethingHappened
 							});
 					}
 				});
@@ -154,7 +169,7 @@ export default Vue.extend({
 
 		onDragstart(e) {
 			e.dataTransfer.effectAllowed = 'move';
-			e.dataTransfer.setData('mk_drive_folder', JSON.stringify(this.folder));
+			e.dataTransfer.setData(_DATA_TRANSFER_DRIVE_FOLDER_, JSON.stringify(this.folder));
 			this.isDragging = true;
 
 			// 親ブラウザに対して、ドラッグが開始されたフラグを立てる
@@ -176,15 +191,15 @@ export default Vue.extend({
 		},
 
 		rename() {
-			this.$root.dialog({
-				title: this.$t('renameFolder'),
+			os.dialog({
+				title: this.$ts.renameFolder,
 				input: {
-					placeholder: this.$t('inputNewFolderName'),
+					placeholder: this.$ts.inputNewFolderName,
 					default: this.folder.name
 				}
 			}).then(({ canceled, result: name }) => {
 				if (canceled) return;
-				this.$root.api('drive/folders/update', {
+				os.api('drive/folders/update', {
 					folderId: this.folder.id,
 					name: name
 				});
@@ -192,38 +207,54 @@ export default Vue.extend({
 		},
 
 		deleteFolder() {
-			this.$root.api('drive/folders/delete', {
+			os.api('drive/folders/delete', {
 				folderId: this.folder.id
 			}).then(() => {
-				if (this.$store.state.settings.uploadFolder === this.folder.id) {
-					this.$store.dispatch('settings/set', {
-						key: 'uploadFolder',
-						value: null
-					});
+				if (this.$store.state.uploadFolder === this.folder.id) {
+					this.$store.set('uploadFolder', null);
 				}
 			}).catch(err => {
 				switch(err.id) {
 					case 'b0fc8a17-963c-405d-bfbc-859a487295e1':
-						this.$root.dialog({
+						os.dialog({
 							type: 'error',
-							title: this.$t('unableToDelete'),
-							text: this.$t('hasChildFilesOrFolders')
+							title: this.$ts.unableToDelete,
+							text: this.$ts.hasChildFilesOrFolders
 						});
 						break;
 					default:
-						this.$root.dialog({
+						os.dialog({
 							type: 'error',
-							text: this.$t('unableToDelete')
+							text: this.$ts.unableToDelete
 						});
 				}
 			});
 		},
 
 		setAsUploadFolder() {
-			this.$store.dispatch('settings/set', {
-				key: 'uploadFolder',
-				value: this.folder.id
-			});
+			this.$store.set('uploadFolder', this.folder.id);
+		},
+
+		onContextmenu(e) {
+			os.contextMenu([{
+				text: this.$ts.openInWindow,
+				icon: 'fas fa-window-restore',
+				action: () => {
+					os.popup(import('./drive-window.vue'), {
+						initialFolder: this.folder
+					}, {
+					}, 'closed');
+				}
+			}, null, {
+				text: this.$ts.rename,
+				icon: 'fas fa-i-cursor',
+				action: this.rename
+			}, null, {
+				text: this.$ts.delete,
+				icon: 'fas fa-trash-alt',
+				danger: true,
+				action: this.deleteFolder
+			}], e);
 		},
 	}
 });
@@ -241,11 +272,25 @@ export default Vue.extend({
 		cursor: pointer;
 	}
 
-	* {
+	*:not(.checkbox) {
 		pointer-events: none;
 	}
 
-	&[data-draghover] {
+	> .checkbox {
+		position: absolute;
+		bottom: 8px;
+		right: 8px;
+		width: 16px;
+		height: 16px;
+		background: #fff;
+		border: solid 1px #000;
+
+		&.checked {
+			background: var(--accent);
+		}
+	}
+
+	&.draghover {
 		&:after {
 			content: "";
 			pointer-events: none;
@@ -264,7 +309,7 @@ export default Vue.extend({
 		font-size: 0.9em;
 		color: var(--desktopDriveFolderFg);
 
-		> [data-icon] {
+		> i {
 			margin-right: 4px;
 			margin-left: 2px;
 			text-align: left;

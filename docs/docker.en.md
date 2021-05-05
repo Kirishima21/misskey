@@ -3,7 +3,8 @@ Docker Guide
 
 This guide describes how to install and setup Misskey with Docker.
 
-[Japanese version also available - 日本語版もあります](./docker.ja.md)
+- [Japanese version also available - 日本語版もあります](./docker.ja.md)
+- [Simplified Chinese version also available - 简体中文版同样可用](./docker.zh.md)
 
 ----------------------------------------------------------------
 
@@ -11,13 +12,13 @@ This guide describes how to install and setup Misskey with Docker.
 ----------------------------------------------------------------
 1. Clone Misskey repository's master branch.
 
-	`git clone -b master git://github.com/syuilo/misskey.git`
+	`git clone -b master git://github.com/misskey-dev/misskey.git`
 
 2. Move to misskey directory.
 
 	`cd misskey`
 
-3. Checkout to the [latest release](https://github.com/syuilo/misskey/releases/latest) tag.
+3. Checkout to the [latest release](https://github.com/misskey-dev/misskey/releases/latest) tag.
 
 	`git checkout master`
 

@@ -3,15 +3,17 @@ import { InternalStorage } from './internal-storage';
 import { DriveFiles, Instances, Notes, Users } from '../../models';
 import { driveChart, perUserDriveChart, instanceChart } from '../chart';
 import { createDeleteObjectStorageFileJob } from '../../queue';
-import { fetchMeta } from '../../misc/fetch-meta';
+import { fetchMeta } from '@/misc/fetch-meta';
 import { getS3 } from './s3';
 import { v4 as uuid } from 'uuid';
 import { Note } from '../../models/entities/note';
 import { renderActivity } from '../../remote/activitypub/renderer';
 import renderDelete from '../../remote/activitypub/renderer/delete';
 import renderTombstone from '../../remote/activitypub/renderer/tombstone';
-import config from '../../config';
+import config from '@/config';
 import { deliverToFollowers } from '../../remote/activitypub/deliver-manager';
+import { Brackets } from 'typeorm';
+import { deliverToRelays } from '../relay';
 
 export async function deleteFile(file: DriveFile, isExpired = false) {
 	if (file.storedInternal) {
@@ -95,11 +97,13 @@ async function postProcess(file: DriveFile, isExpired = false) {
 				if (!Users.isLocalUser(cascadingNote.user)) continue;
 				const content = renderActivity(renderDelete(renderTombstone(`${config.url}/notes/${cascadingNote.id}`), cascadingNote.user));
 				deliverToFollowers(cascadingNote.user, content); // federate delete msg
+				deliverToRelays(cascadingNote.user, content);
 			}
 			if (!relatedNote.user) continue;
 			if (Users.isLocalUser(relatedNote.user)) {
 				const content = renderActivity(renderDelete(renderTombstone(`${config.url}/notes/${relatedNote.id}`), relatedNote.user));
 				deliverToFollowers(relatedNote.user, content);
+				deliverToRelays(relatedNote.user, content);
 			}
 		}
 		Notes.createQueryBuilder().delete()
@@ -145,6 +149,10 @@ async function findCascadingNotes(note: Note) {
 	const recursive = async (noteId: string) => {
 		const query = Notes.createQueryBuilder('note')
 			.where('note.replyId = :noteId', { noteId })
+			.orWhere(new Brackets(q => {
+				q.where('note.renoteId = :noteId', { noteId })
+				.andWhere('note.text IS NOT NULL');
+			}))
 			.leftJoinAndSelect('note.user', 'user');
 		const replies = await query.getMany();
 		for (const reply of replies) {

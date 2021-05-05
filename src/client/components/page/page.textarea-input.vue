@@ -1,35 +1,45 @@
 <template>
 <div>
-	<mk-textarea v-model="v">{{ script.interpolate(value.text) }}</mk-textarea>
+	<MkTextarea :value="value" @update:value="updateValue($event)">{{ hpml.interpolate(block.text) }}</MkTextarea>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { computed, defineComponent, PropType } from 'vue';
 import MkTextarea from '../ui/textarea.vue';
+import * as os from '@client/os';
+import { Hpml } from '@client/scripts/hpml/evaluator';
+import { HpmlTextInput } from '@client/scripts/hpml';
+import { TextInputVarBlock } from '@client/scripts/hpml/block';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		MkTextarea
 	},
 	props: {
-		value: {
+		block: {
+			type: Object as PropType<TextInputVarBlock>,
 			required: true
 		},
-		script: {
+		hpml: {
+			type: Object as PropType<Hpml>,
 			required: true
 		}
 	},
-	data() {
-		return {
-			v: this.value.default,
-		};
-	},
-	watch: {
-		v() {
-			this.script.aiScript.updatePageVar(this.value.name, this.v);
-			this.script.eval();
+	setup(props, ctx) {
+		const value = computed(() => {
+			return props.hpml.vars.value[props.block.name];
+		});
+
+		function updateValue(newValue) {
+			props.hpml.updatePageVar(props.block.name, newValue);
+			props.hpml.eval();
 		}
+
+		return {
+			value,
+			updateValue
+		};
 	}
 });
 </script>

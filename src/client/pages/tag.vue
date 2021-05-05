@@ -1,44 +1,45 @@
 <template>
-<div>
-	<portal to="icon"><fa :icon="faHashtag"/></portal>
-	<portal to="title">{{ $route.params.tag }}</portal>
-
-	<x-notes ref="notes" :pagination="pagination" @before="before" @after="after"/>
+<div class="_section">
+	<XNotes ref="notes" class="_content" :pagination="pagination" @before="before" @after="after"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faHashtag } from '@fortawesome/free-solid-svg-icons';
-import Progress from '../scripts/loading';
-import XNotes from '../components/notes.vue';
+import { defineComponent } from 'vue';
+import Progress from '@client/scripts/loading';
+import XNotes from '@client/components/notes.vue';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	metaInfo() {
-		return {
-			title: '#' + this.$route.params.tag
-		};
-	},
-
+export default defineComponent({
 	components: {
 		XNotes
 	},
 
+	props: {
+		tag: {
+			type: String,
+			required: true
+		}
+	},
+
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: this.tag,
+				icon: 'fas fa-hashtag'
+			},
 			pagination: {
 				endpoint: 'notes/search-by-tag',
 				limit: 10,
 				params: () => ({
-					tag: this.$route.params.tag,
+					tag: this.tag,
 				})
 			},
-			faHashtag
 		};
 	},
 
 	watch: {
-		$route() {
+		tag() {
 			(this.$refs.notes as any).reload();
 		}
 	},

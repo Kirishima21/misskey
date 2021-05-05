@@ -1,56 +1,85 @@
 <template>
 <div class="ngbfujlo">
-	<mk-textarea :value="text" readonly style="margin: 0;"></mk-textarea>
-	<mk-button class="button" primary @click="post()" :disabled="posting || posted">{{ posted ? $t('posted') : $t('post') }}</mk-button>
+	<MkTextarea :value="text" readonly style="margin: 0;"></MkTextarea>
+	<MkButton class="button" primary @click="post()" :disabled="posting || posted">
+		<i v-if="posted" class="fas fa-check"></i>
+		<i v-else class="fas fa-paper-plane"></i>
+	</MkButton>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../../i18n';
+import { defineComponent, PropType } from 'vue';
 import MkTextarea from '../ui/textarea.vue';
 import MkButton from '../ui/button.vue';
+import { apiUrl } from '@client/config';
+import * as os from '@client/os';
+import { PostBlock } from '@client/scripts/hpml/block';
+import { Hpml } from '@client/scripts/hpml/evaluator';
 
-export default Vue.extend({
-	i18n,
+export default defineComponent({
 	components: {
 		MkTextarea,
 		MkButton,
 	},
 	props: {
-		value: {
+		block: {
+			type: Object as PropType<PostBlock>,
 			required: true
 		},
-		script: {
+		hpml: {
+			type: Object as PropType<Hpml>,
 			required: true
 		}
 	},
 	data() {
 		return {
-			text: this.script.interpolate(this.value.text),
+			text: this.hpml.interpolate(this.block.text),
 			posted: false,
 			posting: false,
 		};
 	},
 	watch: {
-		'script.vars': {
+		'hpml.vars': {
 			handler() {
-				this.text = this.script.interpolate(this.value.text);
+				this.text = this.hpml.interpolate(this.block.text);
 			},
 			deep: true
 		}
 	},
 	methods: {
-		post() {
+		upload() {
+			const promise = new Promise((ok) => {
+				const canvas = this.hpml.canvases[this.block.canvasId];
+				canvas.toBlob(blob => {
+					const data = new FormData();
+					data.append('file', blob);
+					data.append('i', this.$i.token);
+					if (this.$store.state.uploadFolder) {
+						data.append('folderId', this.$store.state.uploadFolder);
+					}
+
+					fetch(apiUrl + '/drive/files/create', {
+						method: 'POST',
+						body: data
+					})
+					.then(response => response.json())
+					.then(f => {
+						ok(f);
+					})
+				});
+			});
+			os.promiseDialog(promise);
+			return promise;
+		},
+		async post() {
 			this.posting = true;
-			this.$root.api('notes/create', {
-				text: this.text,
+			const file = this.block.attachCanvasImage ? await this.upload() : null;
+			os.apiWithDialog('notes/create', {
+				text: this.text === '' ? null : this.text,
+				fileIds: file ? [file.id] : undefined,
 			}).then(() => {
 				this.posted = true;
-				this.$root.dialog({
-					type: 'success',
-					iconOnly: true, autoClose: true
-				});
 			});
 		}
 	}
@@ -59,9 +88,11 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .ngbfujlo {
+	position: relative;
 	padding: 32px;
 	border-radius: 6px;
 	box-shadow: 0 2px 8px var(--shadow);
+	z-index: 1;
 
 	> .button {
 		margin-top: 32px;

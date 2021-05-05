@@ -34,10 +34,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import * as tinycolor from 'tinycolor2';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	data() {
 		return {
 			now: new Date(),
@@ -115,19 +116,9 @@ export default Vue.extend({
 			}
 		};
 		update();
-
-		this.$store.subscribe((mutation, state) => {
-			if (mutation.type !== 'device/set') return;
-
-			if (mutation?.payload?.key !== 'theme') return;
-
-			setTimeout(() => {
-				this.computedStyle = getComputedStyle(document.documentElement);
-			}, 250);
-		});
 	},
 
-	beforeDestroy() {
+	beforeUnmount() {
 		this.enabled = false;
 	},
 

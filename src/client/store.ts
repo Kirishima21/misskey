@@ -1,271 +1,293 @@
-import Vuex from 'vuex';
-import createPersistedState from 'vuex-persistedstate';
-import * as nestedProperty from 'nested-property';
+import { markRaw, ref } from 'vue';
+import { Storage } from './pizzax';
+import { Theme } from './scripts/theme';
 
-import MiOS from './mios';
+export const postFormActions = [];
+export const userActions = [];
+export const noteActions = [];
+export const noteViewInterruptors = [];
+export const notePostInterruptors = [];
 
-const defaultSettings = {
-	tutorial: 0,
-	keepCw: false,
-	showFullAcct: false,
-	rememberNoteVisibility: false,
-	defaultNoteVisibility: 'public',
-	defaultNoteLocalOnly: false,
-	uploadFolder: null,
-	pastedFileName: 'yyyy-MM-dd HH-mm-ss [{{number}}]',
-	memo: null,
-	reactions: ['👍', '❤️', '😆', '🤔', '😮', '🎉', '💢', '😥', '😇', '🍮'],
-	faces: [
-		'(=^・・^=)',
-		'v(\'ω\')v',
-		'🐡( \'-\' 🐡 )ﾌｸﾞﾊﾟﾝﾁ!!!!',
-		'✌️(´･_･`)✌️',
-		'(｡>﹏<｡)',
-		'(Δ・x・Δ)',
-		'(ｺ｀・ﾍ・´ｹ)'
-	],
-};
+// TODO: それぞれいちいちwhereとかdefaultというキーを付けなきゃいけないの冗長なのでなんとかする(ただ型定義が面倒になりそう)
+//       あと、現行の定義の仕方なら「whereが何であるかに関わらずキー名の重複不可」という制約を付けられるメリットもあるからそのメリットを引き継ぐ方法も考えないといけない
+export const defaultStore = markRaw(new Storage('base', {
+	tutorial: {
+		where: 'account',
+		default: 0
+	},
+	keepCw: {
+		where: 'account',
+		default: false
+	},
+	showFullAcct: {
+		where: 'account',
+		default: false
+	},
+	rememberNoteVisibility: {
+		where: 'account',
+		default: false
+	},
+	defaultNoteVisibility: {
+		where: 'account',
+		default: 'public'
+	},
+	defaultNoteLocalOnly: {
+		where: 'account',
+		default: false
+	},
+	uploadFolder: {
+		where: 'account',
+		default: null
+	},
+	pastedFileName: {
+		where: 'account',
+		default: 'yyyy-MM-dd HH-mm-ss [{{number}}]'
+	},
+	memo: {
+		where: 'account',
+		default: null
+	},
+	reactions: {
+		where: 'account',
+		default: ['👍', '❤️', '😆', '🤔', '😮', '🎉', '💢', '😥', '😇', '🍮']
+	},
+	mutedWords: {
+		where: 'account',
+		default: []
+	},
 
-const defaultDeviceUserSettings = {
-	visibility: 'public',
-	localOnly: false,
-	widgets: [],
+	menu: {
+		where: 'deviceAccount',
+		default: [
+			'notifications',
+			'messaging',
+			'drive',
+			'followRequests',
+			'-',
+			'gallery',
+			'featured',
+			'explore',
+			'announcements',
+			'search',
+			'-',
+			'ui',
+		]
+	},
+	visibility: {
+		where: 'deviceAccount',
+		default: 'public' as 'public' | 'home' | 'followers' | 'specified'
+	},
+	localOnly: {
+		where: 'deviceAccount',
+		default: false
+	},
+	widgets: {
+		where: 'deviceAccount',
+		default: [] as {
+			name: string;
+			id: string;
+			data: Record<string, any>;
+		}[]
+	},
 	tl: {
-		src: 'home'
+		where: 'deviceAccount',
+		default: {
+			src: 'home',
+			arg: null
+		}
 	},
+
+	serverDisconnectedBehavior: {
+		where: 'device',
+		default: 'quiet' as 'quiet' | 'reload' | 'dialog'
+	},
+	nsfw: {
+		where: 'device',
+		default: 'respect' as 'respect' | 'force' | 'ignore'
+	},
+	animation: {
+		where: 'device',
+		default: true
+	},
+	animatedMfm: {
+		where: 'device',
+		default: true
+	},
+	loadRawImages: {
+		where: 'device',
+		default: false
+	},
+	imageNewTab: {
+		where: 'device',
+		default: false
+	},
+	disableShowingAnimatedImages: {
+		where: 'device',
+		default: false
+	},
+	disablePagesScript: {
+		where: 'device',
+		default: false
+	},
+	useOsNativeEmojis: {
+		where: 'device',
+		default: false
+	},
+	useBlurEffectForModal: {
+		where: 'device',
+		default: true
+	},
+	showFixedPostForm: {
+		where: 'device',
+		default: false
+	},
+	enableInfiniteScroll: {
+		where: 'device',
+		default: true
+	},
+	useReactionPickerForContextMenu: {
+		where: 'device',
+		default: true
+	},
+	showGapBetweenNotesInTimeline: {
+		where: 'device',
+		default: false
+	},
+	darkMode: {
+		where: 'device',
+		default: false
+	},
+	instanceTicker: {
+		where: 'device',
+		default: 'remote' as 'none' | 'remote' | 'always'
+	},
+	reactionPickerWidth: {
+		where: 'device',
+		default: 1
+	},
+	reactionPickerHeight: {
+		where: 'device',
+		default: 1
+	},
+	recentlyUsedEmojis: {
+		where: 'device',
+		default: [] as string[]
+	},
+	recentlyUsedUsers: {
+		where: 'device',
+		default: [] as string[]
+	},
+	defaultSideView: {
+		where: 'device',
+		default: false
+	},
+	sidebarDisplay: {
+		where: 'device',
+		default: 'full' as 'full' | 'icon'
+	},
+	reportError: {
+		where: 'device',
+		default: false
+	},
+}));
+
+// TODO: 他のタブと永続化されたstateを同期
+
+const PREFIX = 'miux:';
+
+type Plugin = {
+	id: string;
+	name: string;
+	active: boolean;
+	configData: Record<string, any>;
+	token: string;
+	ast: any[];
 };
 
-const defaultDeviceSettings = {
-	lang: null,
-	loadRawImages: false,
-	alwaysShowNsfw: false,
-	useOsNativeEmojis: false,
-	autoReload: false,
-	accounts: [],
-	recentEmojis: [],
-	themes: [],
-	darkTheme: '8c539dc1-0fab-4d47-9194-39c508e9bfe1',
-	lightTheme: '4eea646f-7afa-4645-83e9-83af0333cd37',
-	darkMode: false,
-	syncDeviceDarkMode: true,
-	animation: true,
-	animatedMfm: true,
-	imageNewTab: false,
-	showFixedPostForm: false,
-	sfxVolume: 0.3,
-	sfxNote: 'syuilo/down',
-	sfxNoteMy: 'syuilo/up',
-	sfxNotification: 'syuilo/pope2',
-	sfxChat: 'syuilo/pope1',
-	sfxChatBg: 'syuilo/waon',
-	sfxAntenna: 'syuilo/triple',
-	userData: {},
-};
+/**
+ * 常にメモリにロードしておく必要がないような設定情報を保管するストレージ(非リアクティブ)
+ */
+export class ColdDeviceStorage {
+	public static default = {
+		lightTheme: require('@client/themes/l-light.json5') as Theme,
+		darkTheme: require('@client/themes/d-dark.json5') as Theme,
+		syncDeviceDarkMode: true,
+		chatOpenBehavior: 'page' as 'page' | 'window' | 'popout',
+		plugins: [] as Plugin[],
+		mediaVolume: 0.5,
+		sound_masterVolume: 0.3,
+		sound_note: { type: 'syuilo/down', volume: 1 },
+		sound_noteMy: { type: 'syuilo/up', volume: 1 },
+		sound_notification: { type: 'syuilo/pope2', volume: 1 },
+		sound_chat: { type: 'syuilo/pope1', volume: 1 },
+		sound_chatBg: { type: 'syuilo/waon', volume: 1 },
+		sound_antenna: { type: 'syuilo/triple', volume: 1 },
+		sound_channel: { type: 'syuilo/square-pico', volume: 1 },
+		sound_reversiPutBlack: { type: 'syuilo/kick', volume: 0.3 },
+		sound_reversiPutWhite: { type: 'syuilo/snare', volume: 0.3 },
+		roomGraphicsQuality: 'medium' as 'cheep' | 'low' | 'medium' | 'high' | 'ultra',
+		roomUseOrthographicCamera: true,
+	};
 
-function copy<T>(data: T): T {
-	return JSON.parse(JSON.stringify(data));
-}
+	public static watchers = [];
 
-export default (os: MiOS) => new Vuex.Store({
-	plugins: [createPersistedState({
-		paths: ['i', 'device', 'deviceUser', 'settings', 'instance']
-	})],
-
-	state: {
-		i: null,
-	},
-
-	getters: {
-		isSignedIn: state => state.i != null,
-	},
-
-	mutations: {
-		updateI(state, x) {
-			state.i = x;
-		},
-
-		updateIKeyValue(state, x) {
-			state.i[x.key] = x.value;
-		},
-	},
-
-	actions: {
-		async login(ctx, i) {
-			ctx.commit('updateI', i);
-			ctx.commit('settings/init', i.clientData);
-			ctx.commit('deviceUser/init', ctx.state.device.userData[i.id] || {});
-			await ctx.dispatch('addAcount', { id: i.id, i: localStorage.getItem('i') });
-		},
-
-		addAcount(ctx, info) {
-			if (!ctx.state.device.accounts.some(x => x.id === info.id)) {
-				ctx.commit('device/set', {
-					key: 'accounts',
-					value: ctx.state.device.accounts.concat([{ id: info.id, token: info.i }])
-				});
-			}
-		},
-
-		logout(ctx) {
-			ctx.commit('device/setUserData', { userId: ctx.state.i.id, data: ctx.state.deviceUser });
-			ctx.commit('updateI', null);
-			ctx.commit('settings/init', {});
-			ctx.commit('deviceUser/init', {});
-			localStorage.removeItem('i');
-			document.cookie = `igi=; path=/`;
-		},
-
-		async switchAccount(ctx, i) {
-			ctx.commit('device/setUserData', { userId: ctx.state.i.id, data: ctx.state.deviceUser });
-			localStorage.setItem('i', i.token);
-			await ctx.dispatch('login', i);
-		},
-
-		mergeMe(ctx, me) {
-			for (const [key, value] of Object.entries(me)) {
-				ctx.commit('updateIKeyValue', { key, value });
-			}
-
-			if (me.clientData) {
-				ctx.commit('settings/init', me.clientData);
-			}
-		},
-	},
-
-	modules: {
-		instance: {
-			namespaced: true,
-
-			state: {
-				meta: null
-			},
-
-			mutations: {
-				set(state, meta) {
-					state.meta = meta;
-				},
-			},
-
-			actions: {
-				async fetch(ctx) {
-					const meta = await os.api('meta', {
-						detail: false
-					});
-
-					ctx.commit('set', meta);
-				}
-			}
-		},
-
-		device: {
-			namespaced: true,
-
-			state: defaultDeviceSettings,
-
-			mutations: {
-				set(state, x: { key: string; value: any }) {
-					state[x.key] = x.value;
-				},
-
-				setUserData(state, x: { userId: string; data: any }) {
-					state.userData[x.userId] = copy(x.data);
-				},
-			}
-		},
-
-		deviceUser: {
-			namespaced: true,
-
-			state: defaultDeviceUserSettings,
-
-			mutations: {
-				init(state, x) {
-					for (const [key, value] of Object.entries(defaultDeviceUserSettings)) {
-						if (x[key]) {
-							state[key] = x[key];
-						} else {
-							state[key] = value;
-						}
-					}
-				},
-
-				set(state, x: { key: string; value: any }) {
-					state[x.key] = x.value;
-				},
-
-				setTl(state, x) {
-					state.tl = {
-						src: x.src,
-						arg: x.arg
-					};
-				},
-
-				setVisibility(state, visibility) {
-					state.visibility = visibility;
-				},
-
-				setLocalOnly(state, localOnly) {
-					state.localOnly = localOnly;
-				},
-
-				setWidgets(state, widgets) {
-					state.widgets = widgets;
-				},
-
-				addWidget(state, widget) {
-					state.widgets.unshift(widget);
-				},
-
-				removeWidget(state, widget) {
-					state.widgets = state.widgets.filter(w => w.id != widget.id);
-				},
-
-				updateWidget(state, x) {
-					const w = state.widgets.find(w => w.id == x.id);
-					if (w) {
-						w.data = x.data;
-					}
-				},
-			}
-		},
-
-		settings: {
-			namespaced: true,
-
-			state: defaultSettings,
-
-			getters: {
-				getRandomFace: ({ faces }) => () => faces.length > 0 ? faces[Math.floor(Math.random() * faces.length)] : '',
-			},
-
-			mutations: {
-				set(state, x: { key: string; value: any }) {
-					nestedProperty.set(state, x.key, x.value);
-				},
-
-				init(state, x) {
-					for (const [key, value] of Object.entries(defaultSettings)) {
-						if (x[key]) {
-							state[key] = x[key];
-						} else {
-							state[key] = value;
-						}
-					}
-				},
-			},
-
-			actions: {
-				set(ctx, x) {
-					ctx.commit('set', x);
-
-					if (ctx.rootGetters.isSignedIn) {
-						os.api('i/update-client-setting', {
-							name: x.key,
-							value: x.value
-						});
-					}
-				},
-			}
+	public static get<T extends keyof typeof ColdDeviceStorage.default>(key: T): typeof ColdDeviceStorage.default[T] {
+		// TODO: indexedDBにする
+		//       ただしその際はnullチェックではなくキー存在チェックにしないとダメ
+		//       (indexedDBはnullを保存できるため、ユーザーが意図してnullを格納した可能性がある)
+		const value = localStorage.getItem(PREFIX + key);
+		if (value == null) {
+			return ColdDeviceStorage.default[key];
+		} else {
+			return JSON.parse(value);
 		}
 	}
-});
+
+	public static set<T extends keyof typeof ColdDeviceStorage.default>(key: T, value: typeof ColdDeviceStorage.default[T]): void {
+		localStorage.setItem(PREFIX + key, JSON.stringify(value));
+
+		for (const watcher of this.watchers) {
+			if (watcher.key === key) watcher.callback(value);
+		}
+	}
+
+	public static watch(key, callback) {
+		this.watchers.push({ key, callback });
+	}
+
+	// TODO: VueのcustomRef使うと良い感じになるかも
+	public static ref<T extends keyof typeof ColdDeviceStorage.default>(key: T) {
+		const v = ColdDeviceStorage.get(key);
+		const r = ref(v);
+		// TODO: このままではwatcherがリークするので開放する方法を考える
+		this.watch(key, v => {
+			r.value = v;
+		});
+		return r;
+	}
+
+	/**
+	 * 特定のキーの、簡易的なgetter/setterを作ります
+	 * 主にvue場で設定コントロールのmodelとして使う用
+	 */
+	public static makeGetterSetter<K extends keyof typeof ColdDeviceStorage.default>(key: K) {
+		// TODO: VueのcustomRef使うと良い感じになるかも
+		const valueRef = ColdDeviceStorage.ref(key);
+		return {
+			get: () => {
+				return valueRef.value;
+			},
+			set: (value: unknown) => {
+				const val = value;
+				ColdDeviceStorage.set(key, val);
+			}
+		};
+	}
+}
+
+// このファイルに書きたくないけどここに書かないと何故かVeturが認識しない
+declare module '@vue/runtime-core' {
+	interface ComponentCustomProperties {
+		$store: typeof defaultStore;
+	}
+}

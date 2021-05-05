@@ -1,134 +1,44 @@
 <template>
-<div class="zbcjwnqg">
-	<div class="stats" v-if="info">
-		<div class="_panel">
-			<div>
-				<b><fa :icon="faUser"/>{{ $t('users') }}</b>
-				<small>{{ $t('local') }}</small>
-			</div>
-			<div>
-				<dl class="total">
-					<dt>{{ $t('total') }}</dt>
-					<dd>{{ info.originalUsersCount | number }}</dd>
-				</dl>
-				<dl class="diff" :class="{ inc: usersLocalDoD > 0 }">
-					<dt>{{ $t('dayOverDayChanges') }}</dt>
-					<dd>{{ usersLocalDoD | number }}</dd>
-				</dl>
-				<dl class="diff" :class="{ inc: usersLocalWoW > 0 }">
-					<dt>{{ $t('weekOverWeekChanges') }}</dt>
-					<dd>{{ usersLocalWoW | number }}</dd>
-				</dl>
-			</div>
-		</div>
-		<div class="_panel">
-			<div>
-				<b><fa :icon="faUser"/>{{ $t('users') }}</b>
-				<small>{{ $t('remote') }}</small>
-			</div>
-			<div>
-				<dl class="total">
-					<dt>{{ $t('total') }}</dt>
-					<dd>{{ (info.usersCount - info.originalUsersCount) | number }}</dd>
-				</dl>
-				<dl class="diff" :class="{ inc: usersRemoteDoD > 0 }">
-					<dt>{{ $t('dayOverDayChanges') }}</dt>
-					<dd>{{ usersRemoteDoD | number }}</dd>
-				</dl>
-				<dl class="diff" :class="{ inc: usersRemoteWoW > 0 }">
-					<dt>{{ $t('weekOverWeekChanges') }}</dt>
-					<dd>{{ usersRemoteWoW | number }}</dd>
-				</dl>
-			</div>
-		</div>
-		<div class="_panel">
-			<div>
-				<b><fa :icon="faPencilAlt"/>{{ $t('notes') }}</b>
-				<small>{{ $t('local') }}</small>
-			</div>
-			<div>
-				<dl class="total">
-					<dt>{{ $t('total') }}</dt>
-					<dd>{{ info.originalNotesCount | number }}</dd>
-				</dl>
-				<dl class="diff" :class="{ inc: notesLocalDoD > 0 }">
-					<dt>{{ $t('dayOverDayChanges') }}</dt>
-					<dd>{{ notesLocalDoD | number }}</dd>
-				</dl>
-				<dl class="diff" :class="{ inc: notesLocalWoW > 0 }">
-					<dt>{{ $t('weekOverWeekChanges') }}</dt>
-					<dd>{{ notesLocalWoW | number }}</dd>
-				</dl>
-			</div>
-		</div>
-		<div class="_panel">
-			<div>
-				<b><fa :icon="faPencilAlt"/>{{ $t('notes') }}</b>
-				<small>{{ $t('remote') }}</small>
-			</div>
-			<div>
-				<dl class="total">
-					<dt>{{ $t('total') }}</dt>
-					<dd>{{ (info.notesCount - info.originalNotesCount) | number }}</dd>
-				</dl>
-				<dl class="diff" :class="{ inc: notesRemoteDoD > 0 }">
-					<dt>{{ $t('dayOverDayChanges') }}</dt>
-					<dd>{{ notesRemoteDoD | number }}</dd>
-				</dl>
-				<dl class="diff" :class="{ inc: notesRemoteWoW > 0 }">
-					<dt>{{ $t('weekOverWeekChanges') }}</dt>
-					<dd>{{ notesRemoteWoW | number }}</dd>
-				</dl>
-			</div>
-		</div>
+<div class="zbcjwnqg" style="margin-top: -8px;">
+	<div class="selects" style="display: flex;">
+		<MkSelect v-model:value="chartSrc" style="margin: 0; flex: 1;">
+			<optgroup :label="$ts.federation">
+				<option value="federation-instances">{{ $ts._charts.federationInstancesIncDec }}</option>
+				<option value="federation-instances-total">{{ $ts._charts.federationInstancesTotal }}</option>
+			</optgroup>
+			<optgroup :label="$ts.users">
+				<option value="users">{{ $ts._charts.usersIncDec }}</option>
+				<option value="users-total">{{ $ts._charts.usersTotal }}</option>
+				<option value="active-users">{{ $ts._charts.activeUsers }}</option>
+			</optgroup>
+			<optgroup :label="$ts.notes">
+				<option value="notes">{{ $ts._charts.notesIncDec }}</option>
+				<option value="local-notes">{{ $ts._charts.localNotesIncDec }}</option>
+				<option value="remote-notes">{{ $ts._charts.remoteNotesIncDec }}</option>
+				<option value="notes-total">{{ $ts._charts.notesTotal }}</option>
+			</optgroup>
+			<optgroup :label="$ts.drive">
+				<option value="drive-files">{{ $ts._charts.filesIncDec }}</option>
+				<option value="drive-files-total">{{ $ts._charts.filesTotal }}</option>
+				<option value="drive">{{ $ts._charts.storageUsageIncDec }}</option>
+				<option value="drive-total">{{ $ts._charts.storageUsageTotal }}</option>
+			</optgroup>
+		</MkSelect>
+		<MkSelect v-model:value="chartSpan" style="margin: 0;">
+			<option value="hour">{{ $ts.perHour }}</option>
+			<option value="day">{{ $ts.perDay }}</option>
+		</MkSelect>
 	</div>
-
-	<section class="_card">
-		<div class="_title"><fa :icon="faChartBar"/> {{ $t('statistics') }}</div>
-		<div class="_content" style="margin-top: -8px;">
-			<div class="selects" style="display: flex;">
-				<mk-select v-model="chartSrc" style="margin: 0; flex: 1;">
-					<optgroup :label="$t('federation')">
-						<option value="federation-instances">{{ $t('_charts.federationInstancesIncDec') }}</option>
-						<option value="federation-instances-total">{{ $t('_charts.federationInstancesTotal') }}</option>
-					</optgroup>
-					<optgroup :label="$t('users')">
-						<option value="users">{{ $t('_charts.usersIncDec') }}</option>
-						<option value="users-total">{{ $t('_charts.usersTotal') }}</option>
-						<option value="active-users">{{ $t('_charts.activeUsers') }}</option>
-					</optgroup>
-					<optgroup :label="$t('notes')">
-						<option value="notes">{{ $t('_charts.notesIncDec') }}</option>
-						<option value="local-notes">{{ $t('_charts.localNotesIncDec') }}</option>
-						<option value="remote-notes">{{ $t('_charts.remoteNotesIncDec') }}</option>
-						<option value="notes-total">{{ $t('_charts.notesTotal') }}</option>
-					</optgroup>
-					<optgroup :label="$t('drive')">
-						<option value="drive-files">{{ $t('_charts.filesIncDec') }}</option>
-						<option value="drive-files-total">{{ $t('_charts.filesTotal') }}</option>
-						<option value="drive">{{ $t('_charts.storageUsageIncDec') }}</option>
-						<option value="drive-total">{{ $t('_charts.storageUsageTotal') }}</option>
-					</optgroup>
-				</mk-select>
-				<mk-select v-model="chartSpan" style="margin: 0;">
-					<option value="hour">{{ $t('perHour') }}</option>
-					<option value="day">{{ $t('perDay') }}</option>
-				</mk-select>
-			</div>
-			<canvas ref="chart"></canvas>
-		</div>
-	</section>
+	<canvas ref="chart"></canvas>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faChartBar, faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
+import { defineComponent, markRaw } from 'vue';
 import Chart from 'chart.js';
-import i18n from '../i18n';
 import MkSelect from './ui/select.vue';
+import number from '@client/filters/number';
 
-const chartLimit = 90;
 const sum = (...arr) => arr.reduce((r, a) => r.map((b, i) => a[i] + b));
 const negate = arr => arr.map(x => -x);
 const alpha = (hex, a) => {
@@ -138,17 +48,28 @@ const alpha = (hex, a) => {
 	const b = parseInt(result[3], 16);
 	return `rgba(${r}, ${g}, ${b}, ${a})`;
 };
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		MkSelect
 	},
 
+	props: {
+		chartLimit: {
+			type: Number,
+			required: false,
+			default: 90
+		},
+		detailed: {
+			type: Boolean,
+			required: false,
+			default: false
+		},
+	},
+
 	data() {
 		return {
-			info: null,
 			notesLocalWoW: 0,
 			notesLocalDoD: 0,
 			notesRemoteWoW: 0,
@@ -162,7 +83,6 @@ export default Vue.extend({
 			chartInstance: null,
 			chartSrc: 'notes',
 			chartSpan: 'hour',
-			faChartBar, faUser, faPencilAlt
 		}
 	},
 
@@ -207,66 +127,62 @@ export default Vue.extend({
 	},
 
 	async created() {
-		this.info = await this.$root.api('stats');
-
 		this.now = new Date();
 
-		const [perHour, perDay] = await Promise.all([Promise.all([
-			this.$root.api('charts/federation', { limit: chartLimit, span: 'hour' }),
-			this.$root.api('charts/users', { limit: chartLimit, span: 'hour' }),
-			this.$root.api('charts/active-users', { limit: chartLimit, span: 'hour' }),
-			this.$root.api('charts/notes', { limit: chartLimit, span: 'hour' }),
-			this.$root.api('charts/drive', { limit: chartLimit, span: 'hour' }),
-		]), Promise.all([
-			this.$root.api('charts/federation', { limit: chartLimit, span: 'day' }),
-			this.$root.api('charts/users', { limit: chartLimit, span: 'day' }),
-			this.$root.api('charts/active-users', { limit: chartLimit, span: 'day' }),
-			this.$root.api('charts/notes', { limit: chartLimit, span: 'day' }),
-			this.$root.api('charts/drive', { limit: chartLimit, span: 'day' }),
-		])]);
-
-		const chart = {
-			perHour: {
-				federation: perHour[0],
-				users: perHour[1],
-				activeUsers: perHour[2],
-				notes: perHour[3],
-				drive: perHour[4],
-			},
-			perDay: {
-				federation: perDay[0],
-				users: perDay[1],
-				activeUsers: perDay[2],
-				notes: perDay[3],
-				drive: perDay[4],
-			}
-		};
-
-		this.notesLocalWoW = this.info.originalNotesCount - chart.perDay.notes.local.total[7];
-		this.notesLocalDoD = this.info.originalNotesCount - chart.perDay.notes.local.total[1];
-		this.notesRemoteWoW = (this.info.notesCount - this.info.originalNotesCount) - chart.perDay.notes.remote.total[7];
-		this.notesRemoteDoD = (this.info.notesCount - this.info.originalNotesCount) - chart.perDay.notes.remote.total[1];
-		this.usersLocalWoW = this.info.originalUsersCount - chart.perDay.users.local.total[7];
-		this.usersLocalDoD = this.info.originalUsersCount - chart.perDay.users.local.total[1];
-		this.usersRemoteWoW = (this.info.usersCount - this.info.originalUsersCount) - chart.perDay.users.remote.total[7];
-		this.usersRemoteDoD = (this.info.usersCount - this.info.originalUsersCount) - chart.perDay.users.remote.total[1];
-
-		this.chart = chart;
-
-		this.renderChart();
+		this.fetchChart();
 	},
 
 	methods: {
+		async fetchChart() {
+			const [perHour, perDay] = await Promise.all([Promise.all([
+				os.api('charts/federation', { limit: this.chartLimit, span: 'hour' }),
+				os.api('charts/users', { limit: this.chartLimit, span: 'hour' }),
+				os.api('charts/active-users', { limit: this.chartLimit, span: 'hour' }),
+				os.api('charts/notes', { limit: this.chartLimit, span: 'hour' }),
+				os.api('charts/drive', { limit: this.chartLimit, span: 'hour' }),
+			]), Promise.all([
+				os.api('charts/federation', { limit: this.chartLimit, span: 'day' }),
+				os.api('charts/users', { limit: this.chartLimit, span: 'day' }),
+				os.api('charts/active-users', { limit: this.chartLimit, span: 'day' }),
+				os.api('charts/notes', { limit: this.chartLimit, span: 'day' }),
+				os.api('charts/drive', { limit: this.chartLimit, span: 'day' }),
+			])]);
+
+			const chart = {
+				perHour: {
+					federation: perHour[0],
+					users: perHour[1],
+					activeUsers: perHour[2],
+					notes: perHour[3],
+					drive: perHour[4],
+				},
+				perDay: {
+					federation: perDay[0],
+					users: perDay[1],
+					activeUsers: perDay[2],
+					notes: perDay[3],
+					drive: perDay[4],
+				}
+			};
+
+			this.chart = chart;
+
+			this.renderChart();
+		},
+
 		renderChart() {
 			if (this.chartInstance) {
 				this.chartInstance.destroy();
 			}
 
+			// TODO: var(--panel)の色が暗いか明るいかで判定する
+			const gridColor = this.$store.state.darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
 			Chart.defaults.global.defaultFontColor = getComputedStyle(document.documentElement).getPropertyValue('--fg');
-			this.chartInstance = new Chart(this.$refs.chart, {
+			this.chartInstance = markRaw(new Chart(this.$refs.chart, {
 				type: 'line',
 				data: {
-					labels: new Array(chartLimit).fill(0).map((_, i) => this.getDate(i).toLocaleString()).slice().reverse(),
+					labels: new Array(this.chartLimit).fill(0).map((_, i) => this.getDate(i).toLocaleString()).slice().reverse(),
 					datasets: this.data.series.map(x => ({
 						label: x.name,
 						data: x.data.slice().reverse(),
@@ -274,7 +190,9 @@ export default Vue.extend({
 						lineTension: 0,
 						borderWidth: 2,
 						borderColor: x.color,
+						borderDash: x.borderDash || [],
 						backgroundColor: alpha(x.color, 0.1),
+						fill: x.fill == null ? true : x.fill,
 						hidden: !!x.hidden
 					}))
 				},
@@ -282,10 +200,10 @@ export default Vue.extend({
 					aspectRatio: 2.5,
 					layout: {
 						padding: {
-							left: 0,
-							right: 0,
+							left: 16,
+							right: 16,
 							top: 16,
-							bottom: 0
+							bottom: 8
 						}
 					},
 					legend: {
@@ -296,17 +214,28 @@ export default Vue.extend({
 					},
 					scales: {
 						xAxes: [{
+							type: 'time',
+							time: {
+								stepSize: 1,
+								unit: this.chartSpan == 'day' ? 'month' : 'day',
+							},
 							gridLines: {
-								display: false
+								display: this.detailed,
+								color: gridColor,
+								zeroLineColor: gridColor,
 							},
 							ticks: {
-								display: false
+								display: this.detailed
 							}
 						}],
 						yAxes: [{
-							position: 'right',
+							position: 'left',
+							gridLines: {
+								color: gridColor,
+								zeroLineColor: gridColor,
+							},
 							ticks: {
-								display: false
+								display: this.detailed
 							}
 						}]
 					},
@@ -315,7 +244,7 @@ export default Vue.extend({
 						mode: 'index',
 					}
 				}
-			});
+			}));
 		},
 
 		getDate(ago: number) {
@@ -328,7 +257,11 @@ export default Vue.extend({
 		},
 
 		format(arr) {
-			return arr;
+			const now = Date.now();
+			return arr.map((v, i) => ({
+				x: new Date(now - ((this.chartSpan == 'day' ? 86400000 :3600000 ) * i)),
+				y: v
+			}));
 		},
 
 		federationInstancesChart(total: boolean): any {
@@ -350,6 +283,8 @@ export default Vue.extend({
 					name: 'All',
 					type: 'line',
 					color: '#008FFB',
+					borderDash: [5, 5],
+					fill: false,
 					data: this.format(type == 'combined'
 						? sum(this.stats.notes.local.inc, negate(this.stats.notes.local.dec), this.stats.notes.remote.inc, negate(this.stats.notes.remote.dec))
 						: sum(this.stats.notes[type].inc, negate(this.stats.notes[type].dec))
@@ -466,7 +401,9 @@ export default Vue.extend({
 				series: [{
 					name: 'All',
 					type: 'line',
-					color: '#008FFB',
+					color: '#09d8e2',
+					borderDash: [5, 5],
+					fill: false,
 					data: this.format(
 						sum(
 							this.stats.drive.local.incSize,
@@ -483,17 +420,17 @@ export default Vue.extend({
 				}, {
 					name: 'Local -',
 					type: 'area',
-					color: '#008FFB',
+					color: '#FF4560',
 					data: this.format(negate(this.stats.drive.local.decSize))
 				}, {
 					name: 'Remote +',
 					type: 'area',
-					color: '#008FFB',
+					color: '#00E396',
 					data: this.format(this.stats.drive.remote.incSize)
 				}, {
 					name: 'Remote -',
 					type: 'area',
-					color: '#008FFB',
+					color: '#FEB019',
 					data: this.format(negate(this.stats.drive.remote.decSize))
 				}]
 			};
@@ -528,7 +465,9 @@ export default Vue.extend({
 				series: [{
 					name: 'All',
 					type: 'line',
-					color: '#008FFB',
+					color: '#09d8e2',
+					borderDash: [5, 5],
+					fill: false,
 					data: this.format(
 						sum(
 							this.stats.drive.local.incCount,
@@ -545,17 +484,17 @@ export default Vue.extend({
 				}, {
 					name: 'Local -',
 					type: 'area',
-					color: '#008FFB',
+					color: '#FF4560',
 					data: this.format(negate(this.stats.drive.local.decCount))
 				}, {
 					name: 'Remote +',
 					type: 'area',
-					color: '#008FFB',
+					color: '#00E396',
 					data: this.format(this.stats.drive.remote.incCount)
 				}, {
 					name: 'Remote -',
 					type: 'area',
-					color: '#008FFB',
+					color: '#FEB019',
 					data: this.format(negate(this.stats.drive.remote.decCount))
 				}]
 			};
@@ -583,83 +522,16 @@ export default Vue.extend({
 				}]
 			};
 		},
+
+		number
 	}
 });
 </script>
 
 <style lang="scss" scoped>
 .zbcjwnqg {
-	> .stats {
-		display: flex;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		margin: calc(0px - var(--margin) / 2);
-		margin-bottom: calc(var(--margin) / 2);
-
-		> div {
-			display: flex;
-			flex: 1 0 213px;
-			margin: calc(var(--margin) / 2);
-			box-sizing: border-box;
-			padding: 16px 20px;
-
-			> div {
-				width: 50%;
-
-				&:first-child {
-					> b {
-						display: block;
-
-						> [data-icon] {
-							width: 16px;
-							margin-right: 8px;
-						}
-					}
-
-					> small {
-						margin-left: 16px + 8px;
-						opacity: 0.7;
-					}
-				}
-
-				&:last-child {
-					> dl {
-						display: flex;
-						margin: 0;
-						line-height: 1.5em;
-
-						> dt,
-						> dd {
-							width: 50%;
-							margin: 0;
-						}
-
-						> dt {
-							text-overflow: ellipsis;
-							overflow: hidden;
-							white-space: nowrap;
-						}
-
-						&.total {
-							> dt,
-							> dd {
-								font-weight: bold;
-							}
-						}
-
-						&.diff.inc {
-							> dd {
-								color: #82c11c;
-
-								&:before {
-									content: "+";
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+	> .selects {
+		padding: 8px 16px 0 16px;
 	}
 }
 </style>

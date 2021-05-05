@@ -1,15 +1,23 @@
-import { faHistory } from '@fortawesome/free-solid-svg-icons';
+import * as os from '@client/os';
+import { i18n } from '@client/i18n';
+import { router } from '@client/router';
 
-export async function search(v: any, q: string) {
-	q = q.trim();
+export async function search() {
+	const { canceled, result: query } = await os.dialog({
+		title: i18n.locale.search,
+		input: true
+	});
+	if (canceled || query == null || query === '') return;
+
+	const q = query.trim();
 
 	if (q.startsWith('@') && !q.includes(' ')) {
-		v.$router.push(`/${q}`);
+		router.push(`/${q}`);
 		return;
 	}
 
 	if (q.startsWith('#')) {
-		v.$router.push(`/tags/${encodeURIComponent(q.substr(1))}`);
+		router.push(`/tags/${encodeURIComponent(q.substr(1))}`);
 		return;
 	}
 
@@ -25,40 +33,32 @@ export async function search(v: any, q: string) {
 			date.setHours(23, 59, 59, 999);
 		}
 
-		v.$root.$emit('warp', date);
-		v.$root.dialog({
-			icon: faHistory,
+		// TODO
+		//v.$root.$emit('warp', date);
+		os.dialog({
+			icon: 'fas fa-history',
 			iconOnly: true, autoClose: true
 		});
 		return;
 	}
 
 	if (q.startsWith('https://')) {
-		const dialog = v.$root.dialog({
-			type: 'waiting',
-			text: v.$t('fetchingAsApObject') + '...',
-			showOkButton: false,
-			showCancelButton: false,
-			cancelableByBgClick: false
+		const promise = os.api('ap/show', {
+			uri: q
 		});
 
-		try {
-			const res = await v.$root.api('ap/show', {
-				uri: q
-			});
-			dialog.close();
-			if (res.type == 'User') {
-				v.$router.push(`/@${res.object.username}@${res.object.host}`);
-			} else if (res.type == 'Note') {
-				v.$router.push(`/notes/${res.object.id}`);
-			}
-		} catch (e) {
-			dialog.close();
-			// TODO: Show error
+		os.promiseDialog(promise, null, null, i18n.locale.fetchingAsApObject);
+
+		const res = await promise;
+
+		if (res.type === 'User') {
+			router.push(`/@${res.object.username}@${res.object.host}`);
+		} else if (res.type === 'Note') {
+			router.push(`/notes/${res.object.id}`);
 		}
 
 		return;
 	}
 
-	v.$router.push(`/search?q=${encodeURIComponent(q)}`);
+	router.push(`/search?q=${encodeURIComponent(q)}`);
 }

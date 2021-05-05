@@ -1,14 +1,14 @@
 <template>
-<div class="swhvrteh" @contextmenu.prevent="() => {}">
+<div class="swhvrteh _popup _shadow" @contextmenu.prevent="() => {}">
 	<ol class="users" ref="suggests" v-if="type === 'user'">
 		<li v-for="user in users" @click="complete(type, user)" @keydown="onKeydown" tabindex="-1" class="user">
 			<img class="avatar" :src="user.avatarUrl"/>
 			<span class="name">
-				<mk-user-name :user="user" :key="user.id"/>
+				<MkUserName :user="user" :key="user.id"/>
 			</span>
-			<span class="username">@{{ user | acct }}</span>
+			<span class="username">@{{ acct(user) }}</span>
 		</li>
-		<li @click="chooseUser()" @keydown="onKeydown" tabindex="-1" class="choose">{{ $t('selectUser') }}</li>
+		<li @click="chooseUser()" @keydown="onKeydown" tabindex="-1" class="choose">{{ $ts.selectUser }}</li>
 	</ol>
 	<ol class="hashtags" ref="suggests" v-if="hashtags.length > 0">
 		<li v-for="hashtag in hashtags" @click="complete(type, hashtag)" @keydown="onKeydown" tabindex="-1">
@@ -17,8 +17,8 @@
 	</ol>
 	<ol class="emojis" ref="suggests" v-if="emojis.length > 0">
 		<li v-for="emoji in emojis" @click="complete(type, emoji.emoji)" @keydown="onKeydown" tabindex="-1">
-			<span class="emoji" v-if="emoji.isCustomEmoji"><img :src="$store.state.device.disableShowingAnimatedImages ? getStaticImageUrl(emoji.url) : emoji.url" :alt="emoji.emoji"/></span>
-			<span class="emoji" v-else-if="!useOsNativeEmojis"><img :src="emoji.url" :alt="emoji.emoji"/></span>
+			<span class="emoji" v-if="emoji.isCustomEmoji"><img :src="$store.state.disableShowingAnimatedImages ? getStaticImageUrl(emoji.url) : emoji.url" :alt="emoji.emoji"/></span>
+			<span class="emoji" v-else-if="!$store.state.useOsNativeEmojis"><img :src="emoji.url" :alt="emoji.emoji"/></span>
 			<span class="emoji" v-else>{{ emoji.emoji }}</span>
 			<span class="name" v-html="emoji.name.replace(q, `<b>${q}</b>`)"></span>
 			<span class="alias" v-if="emoji.aliasOf">({{ emoji.aliasOf }})</span>
@@ -28,12 +28,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { emojilist } from '../../misc/emojilist';
-import contains from '../scripts/contains';
-import { twemojiSvgBase } from '../../misc/twemoji-base';
-import { getStaticImageUrl } from '../scripts/get-static-image-url';
-import MkUserSelect from './user-select.vue';
+import { defineComponent, markRaw } from 'vue';
+import { emojilist } from '@/misc/emojilist';
+import contains from '@client/scripts/contains';
+import { twemojiSvgBase } from '@/misc/twemoji-base';
+import { getStaticImageUrl } from '@client/scripts/get-static-image-url';
+import { acct } from '@client/filters/user';
+import * as os from '@client/os';
 
 type EmojiDef = {
 	emoji: string;
@@ -74,7 +75,7 @@ for (const x of lib) {
 
 emjdb.sort((a, b) => a.name.length - b.name.length);
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		type: {
 			type: String,
@@ -88,11 +89,6 @@ export default Vue.extend({
 
 		textarea: {
 			type: HTMLTextAreaElement,
-			required: true,
-		},
-
-		complete: {
-			type: Function,
 			required: true,
 		},
 
@@ -110,7 +106,14 @@ export default Vue.extend({
 			type: Number,
 			required: true,
 		},
+
+		showing: {
+			type: Boolean,
+			required: true
+		},
 	},
+
+	emits: ['done', 'closed'],
 
 	data() {
 		return {
@@ -119,31 +122,30 @@ export default Vue.extend({
 			users: [],
 			hashtags: [],
 			emojis: [],
+			items: [],
 			select: -1,
-			emojilist,
 			emojiDb: [] as EmojiDef[]
 		}
 	},
 
-	computed: {
-		items(): HTMLCollection {
-			return (this.$refs.suggests as Element).children;
-		},
-
-		useOsNativeEmojis(): boolean {
-			return this.$store.state.device.useOsNativeEmojis;
+	watch: {
+		showing() {
+			if (!this.showing) {
+				this.$emit('closed');
+			}
 		}
 	},
 
 	updated() {
 		this.setPosition();
+		this.items = (this.$refs.suggests as Element | undefined)?.children || [];
 	},
 
 	mounted() {
 		this.setPosition();
 
 		//#region Construct Emoji DB
-		const customEmojis = this.$store.state.instance.meta.emojis;
+		const customEmojis = this.$instance.emojis;
 		const emojiDefinitions: EmojiDef[] = [];
 
 		for (const x of customEmojis) {
@@ -169,7 +171,7 @@ export default Vue.extend({
 
 		emojiDefinitions.sort((a, b) => a.name.length - b.name.length);
 
-		this.emojiDb = emojiDefinitions.concat(emjdb);
+		this.emojiDb = markRaw(emojiDefinitions.concat(emjdb));
 		//#endregion
 
 		this.textarea.addEventListener('keydown', this.onKeydown);
@@ -189,7 +191,7 @@ export default Vue.extend({
 		});
 	},
 
-	beforeDestroy() {
+	beforeUnmount() {
 		this.textarea.removeEventListener('keydown', this.onKeydown);
 
 		for (const el of Array.from(document.querySelectorAll('body *'))) {
@@ -198,6 +200,11 @@ export default Vue.extend({
 	},
 
 	methods: {
+		complete(type, value) {
+			this.$emit('done', { type, value });
+			this.$emit('closed');
+		},
+
 		setPosition() {
 			if (this.x + this.$el.offsetWidth > window.innerWidth) {
 				this.$el.style.left = (window.innerWidth - this.$el.offsetWidth) + 'px';
@@ -236,8 +243,8 @@ export default Vue.extend({
 					this.users = users;
 					this.fetching = false;
 				} else {
-					this.$root.api('users/search', {
-						query: this.q,
+					os.api('users/search-by-username-and-host', {
+						username: this.q,
 						limit: 10,
 						detail: false
 					}).then(users => {
@@ -260,7 +267,7 @@ export default Vue.extend({
 						this.hashtags = hashtags;
 						this.fetching = false;
 					} else {
-						this.$root.api('hashtags/search', {
+						os.api('hashtags/search', {
 							query: this.q,
 							limit: 30
 						}).then(hashtags => {
@@ -355,6 +362,7 @@ export default Vue.extend({
 
 		selectNext() {
 			if (++this.select >= this.items.length) this.select = 0;
+			if (this.items.length === 0) this.select = -1;
 			this.applySelect();
 		},
 
@@ -368,20 +376,21 @@ export default Vue.extend({
 				el.removeAttribute('data-selected');
 			}
 
-			this.items[this.select].setAttribute('data-selected', 'true');
-			(this.items[this.select] as any).focus();
+			if (this.select !== -1) {
+				this.items[this.select].setAttribute('data-selected', 'true');
+				(this.items[this.select] as any).focus();
+			}
 		},
 
 		chooseUser() {
 			this.close();
-			const vm = this.$root.new(MkUserSelect, {});
-			vm.$once('selected', user => {
+			os.selectUser().then(user => {
 				this.complete('user', user);
-			});
-			vm.$once('closed', () => {
 				this.textarea.focus();
 			});
-		}
+		},
+
+		acct
 	}
 });
 </script>
@@ -393,9 +402,6 @@ export default Vue.extend({
 	max-width: 100%;
 	margin-top: calc(1em + 8px);
 	overflow: hidden;
-	background: var(--panel);
-	border: solid 1px rgba(#000, 0.1);
-	border-radius: 4px;
 	transition: top 0.1s ease, left 0.1s ease;
 
 	> ol {
@@ -426,7 +432,7 @@ export default Vue.extend({
 			}
 
 			&:hover {
-				background: var(--yrnqrguo);
+				background: var(--X3);
 			}
 
 			&[data-selected='true'] {

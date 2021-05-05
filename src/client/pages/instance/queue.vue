@@ -1,52 +1,47 @@
 <template>
-<div>
-	<portal to="icon"><fa :icon="faExchangeAlt"/></portal>
-	<portal to="title">{{ $t('jobQueue') }}</portal>
-
-	<x-queue :connection="connection" domain="inbox">
-		<template #title><fa :icon="faExchangeAlt"/> In</template>
-	</x-queue>
-	<x-queue :connection="connection" domain="deliver">
-		<template #title><fa :icon="faExchangeAlt"/> Out</template>
-	</x-queue>
-	<section class="_card">
-		<div class="_content">
-			<mk-button @click="clear()"><fa :icon="faTrashAlt"/> {{ $t('clearQueue') }}</mk-button>
-		</div>
-	</section>
-</div>
+<FormBase>
+	<XQueue :connection="connection" domain="inbox">
+		<template #title>In</template>
+	</XQueue>
+	<XQueue :connection="connection" domain="deliver">
+		<template #title>Out</template>
+	</XQueue>
+	<FormButton @click="clear()" danger><i class="fas fa-trash-alt"></i> {{ $ts.clearQueue }}</FormButton>
+</FormBase>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faExchangeAlt } from '@fortawesome/free-solid-svg-icons';
-import { faTrashAlt } from '@fortawesome/free-regular-svg-icons';
-import i18n from '../../i18n';
-import MkButton from '../../components/ui/button.vue';
-import XQueue from './queue.queue.vue';
+import { defineComponent } from 'vue';
+import MkButton from '@client/components/ui/button.vue';
+import XQueue from './queue.chart.vue';
+import FormBase from '@client/components/form/base.vue';
+import FormButton from '@client/components/form/button.vue';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	i18n,
-
-	metaInfo() {
-		return {
-			title: `${this.$t('jobQueue')} | ${this.$t('instance')}`
-		};
-	},
-
+export default defineComponent({
 	components: {
+		FormBase,
+		FormButton,
 		MkButton,
 		XQueue,
 	},
 
+	emits: ['info'],
+
 	data() {
 		return {
-			connection: this.$root.stream.useSharedConnection('queueStats'),
-			faExchangeAlt, faTrashAlt
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.jobQueue,
+				icon: 'fas fa-clipboard-list',
+			},
+			connection: os.stream.useSharedConnection('queueStats'),
 		}
 	},
 
 	mounted() {
+		this.$emit('info', this[symbols.PAGE_INFO]);
+
 		this.$nextTick(() => {
 			this.connection.send('requestLog', {
 				id: Math.random().toString().substr(2, 8),
@@ -55,26 +50,21 @@ export default Vue.extend({
 		});
 	},
 
-	beforeDestroy() {
+	beforeUnmount() {
 		this.connection.dispose();
 	},
 
 	methods: {
 		clear() {
-			this.$root.dialog({
+			os.dialog({
 				type: 'warning',
-				title: this.$t('clearQueueConfirmTitle'),
-				text: this.$t('clearQueueConfirmText'),
+				title: this.$ts.clearQueueConfirmTitle,
+				text: this.$ts.clearQueueConfirmText,
 				showCancelButton: true
 			}).then(({ canceled }) => {
 				if (canceled) return;
 
-				this.$root.api('admin/queue/clear', {}).then(() => {
-					this.$root.dialog({
-						type: 'success',
-						iconOnly: true, autoClose: true
-					});
-				});
+				os.apiWithDialog('admin/queue/clear', {});
 			});
 		}
 	}

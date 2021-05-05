@@ -1,38 +1,36 @@
 <template>
-<div>
-	<portal to="icon"><fa :icon="faSearch"/></portal>
-	<portal to="title">{{ $t('searchWith', { q: $route.query.q }) }}</portal>
-	<x-notes ref="notes" :pagination="pagination" @before="before" @after="after"/>
+<div class="_section">
+	<div class="_content">
+		<XNotes ref="notes" :pagination="pagination" @before="before" @after="after"/>
+	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faSearch } from '@fortawesome/free-solid-svg-icons';
-import Progress from '../scripts/loading';
-import XNotes from '../components/notes.vue';
+import { computed, defineComponent } from 'vue';
+import Progress from '@client/scripts/loading';
+import XNotes from '@client/components/notes.vue';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	metaInfo() {
-		return {
-			title: this.$t('searchWith', { q: this.$route.query.q }) as string
-		};
-	},
-
+export default defineComponent({
 	components: {
 		XNotes
 	},
 
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: computed(() => this.$t('searchWith', { q: this.$route.query.q })),
+				icon: 'fas fa-search'
+			},
 			pagination: {
 				endpoint: 'notes/search',
 				limit: 10,
 				params: () => ({
 					query: this.$route.query.q,
+					channelId: this.$route.query.channel,
 				})
 			},
-			faSearch
 		};
 	},
 

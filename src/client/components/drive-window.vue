@@ -1,53 +1,44 @@
 <template>
-<x-window ref="window" @closed="() => { $emit('closed'); destroyDom(); }" :with-ok-button="true" :ok-button-disabled="selected.length === 0" @ok="ok()">
-	<template #header>{{ multiple ? $t('selectFiles') : $t('selectFile') }}<span v-if="selected.length > 0" style="margin-left: 8px; opacity: 0.5;">({{ selected.length | number }})</span></template>
-	<div>
-		<x-drive :multiple="multiple" @change-selection="onChangeSelection" :select-mode="true"/>
-	</div>
-</x-window>
+<XWindow ref="window"
+	:initial-width="800"
+	:initial-height="500"
+	:can-resize="true"
+	@closed="$emit('closed')"
+>
+	<template #header>
+		{{ $ts.drive }}
+	</template>
+	<XDrive :initial-folder="initialFolder"/>
+</XWindow>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../i18n';
+import { defineComponent } from 'vue';
 import XDrive from './drive.vue';
-import XWindow from './window.vue';
+import XWindow from '@client/components/ui/window.vue';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		XDrive,
 		XWindow,
 	},
 
 	props: {
-		type: {
-			type: String,
-			required: false,
-			default: undefined 
+		initialFolder: {
+			type: Object,
+			required: false
 		},
-		multiple: {
-			type: Boolean,
-			default: false
-		}
 	},
+
+	emits: ['closed'],
 
 	data() {
 		return {
-			selected: []
 		};
 	},
 
 	methods: {
-		ok() {
-			this.$emit('selected', this.selected);
-			this.$refs.window.close();
-		},
 
-		onChangeSelection(files) {
-			this.selected = files;
-		}
 	}
 });
 </script>

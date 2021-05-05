@@ -1,22 +1,19 @@
 <template>
-<x-container @remove="() => $emit('remove')" :draggable="true">
-	<template #header><fa :icon="faAlignLeft"/> {{ $t('_pages.blocks.textarea') }}</template>
+<XContainer @remove="() => $emit('remove')" :draggable="true">
+	<template #header><i class="fas fa-align-left"></i> {{ $ts._pages.blocks.textarea }}</template>
 
 	<section class="ihymsbbe">
 		<textarea v-model="value.text"></textarea>
 	</section>
-</x-container>
+</XContainer>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faAlignLeft } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../../../i18n';
+import { defineComponent } from 'vue';
 import XContainer from '../page-editor.container.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		XContainer
 	},
@@ -29,12 +26,11 @@ export default Vue.extend({
 
 	data() {
 		return {
-			faAlignLeft,
 		};
 	},
 
 	created() {
-		if (this.value.text == null) Vue.set(this.value, 'text', '');
+		if (this.value.text == null) this.value.text = '';
 	},
 });
 </script>
@@ -55,6 +51,7 @@ export default Vue.extend({
 		background: transparent;
 		color: var(--fg);
 		font-size: 14px;
+		box-sizing: border-box;
 	}
 }
 </style>

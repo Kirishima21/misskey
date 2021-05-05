@@ -5,24 +5,28 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
+import * as os from '@client/os';
+import { ImageBlock } from '@client/scripts/hpml/block';
+import { Hpml } from '@client/scripts/hpml/evaluator';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
-		value: {
+		block: {
+			type: Object as PropType<ImageBlock>,
 			required: true
 		},
-		page: {
+		hpml: {
+			type: Object as PropType<Hpml>,
 			required: true
-		},
+		}
 	},
-	data() {
+	setup(props, ctx) {
+		const image = props.hpml.page.attachedFiles.find(x => x.id === props.block.fileId);
+
 		return {
-			image: null,
+			image
 		};
-	},
-	created() {
-		this.image = this.page.attachedFiles.find(x => x.id === this.value.fileId);
 	}
 });
 </script>

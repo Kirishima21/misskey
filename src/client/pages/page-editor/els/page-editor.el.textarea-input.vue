@@ -1,26 +1,23 @@
 <template>
-<x-container @remove="() => $emit('remove')" :draggable="true">
-	<template #header><fa :icon="faBolt"/> {{ $t('_pages.blocks.textareaInput') }}</template>
+<XContainer @remove="() => $emit('remove')" :draggable="true">
+	<template #header><i class="fas fa-bolt"></i> {{ $ts._pages.blocks.textareaInput }}</template>
 
 	<section style="padding: 0 16px 16px 16px;">
-		<mk-input v-model="value.name"><template #prefix><fa :icon="faMagic"/></template><span>{{ $t('_pages.blocks._textareaInput.name') }}</span></mk-input>
-		<mk-input v-model="value.text"><span>{{ $t('_pages.blocks._textareaInput.text') }}</span></mk-input>
-		<mk-textarea v-model="value.default"><span>{{ $t('_pages.blocks._textareaInput.default') }}</span></mk-textarea>
+		<MkInput v-model:value="value.name"><template #prefix><i class="fas fa-magic"></i></template><span>{{ $ts._pages.blocks._textareaInput.name }}</span></MkInput>
+		<MkInput v-model:value="value.text"><span>{{ $ts._pages.blocks._textareaInput.text }}</span></MkInput>
+		<MkTextarea v-model:value="value.default"><span>{{ $ts._pages.blocks._textareaInput.default }}</span></MkTextarea>
 	</section>
-</x-container>
+</XContainer>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faBolt, faMagic } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../../../i18n';
+import { defineComponent } from 'vue';
 import XContainer from '../page-editor.container.vue';
-import MkTextarea from '../../../components/ui/textarea.vue';
-import MkInput from '../../../components/ui/input.vue';
+import MkTextarea from '@client/components/ui/textarea.vue';
+import MkInput from '@client/components/ui/input.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		XContainer, MkTextarea, MkInput
 	},
@@ -33,12 +30,11 @@ export default Vue.extend({
 
 	data() {
 		return {
-			faBolt, faMagic
 		};
 	},
 
 	created() {
-		if (this.value.name == null) Vue.set(this.value, 'name', '');
+		if (this.value.name == null) this.value.name = '';
 	},
 });
 </script>

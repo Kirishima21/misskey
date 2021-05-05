@@ -1,14 +1,23 @@
 <template>
-<div>
-	<div ref="chart"></div>
-</div>
+<MkContainer>
+	<template #header><i class="fas fa-chart-bar" style="margin-right: 0.5em;"></i>{{ $ts.activity }}</template>
+
+	<div style="padding: 8px;">
+		<div ref="chart"></div>
+	</div>
+</MkContainer>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ApexCharts from 'apexcharts';
+import * as os from '@client/os';
+import MkContainer from '@client/components/ui/container.vue';
 
-export default Vue.extend({
+export default defineComponent({
+	components: {
+		MkContainer,
+	},
 	props: {
 		user: {
 			type: Object,
@@ -24,11 +33,11 @@ export default Vue.extend({
 		return {
 			fetching: true,
 			data: [],
-			peak: null
+			peak: null,
 		};
 	},
 	mounted() {
-		this.$root.api('charts/user/notes', {
+		os.api('charts/user/notes', {
 			userId: this.user.id,
 			span: 'day',
 			limit: this.limit
@@ -86,7 +95,8 @@ export default Vue.extend({
 				},
 				tooltip: {
 					shared: true,
-					intersect: false
+					intersect: false,
+					theme: this.$store.state.darkMode ? 'dark' : 'light',
 				},
 				series: [{
 					name: 'Normal',

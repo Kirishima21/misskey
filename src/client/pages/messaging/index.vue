@@ -1,77 +1,75 @@
 <template>
-<div class="mk-messaging">
-	<portal to="icon"><fa :icon="faComments"/></portal>
-	<portal to="title">{{ $t('messaging') }}</portal>
-
-	<mk-button @click="start" primary class="start"><fa :icon="faPlus"/> {{ $t('startMessaging') }}</mk-button>
+<div class="yweeujhr _root" v-size="{ max: [400] }">
+	<MkButton @click="start" primary class="start"><i class="fas fa-plus"></i> {{ $ts.startMessaging }}</MkButton>
 
 	<div class="history" v-if="messages.length > 0">
-		<router-link v-for="(message, i) in messages"
-			class="message _panel"
+		<MkA v-for="(message, i) in messages"
+			class="message _block"
+			:class="{ isMe: isMe(message), isRead: message.groupId ? message.reads.includes($i.id) : message.isRead }"
 			:to="message.groupId ? `/my/messaging/group/${message.groupId}` : `/my/messaging/${getAcct(isMe(message) ? message.recipient : message.user)}`"
-			:data-is-me="isMe(message)"
-			:data-is-read="message.groupId ? message.reads.includes($store.state.i.id) : message.isRead"
 			:data-index="i"
 			:key="message.id"
+			v-anim="i"
 		>
 			<div>
-				<mk-avatar class="avatar" :user="message.groupId ? message.user : isMe(message) ? message.recipient : message.user"/>
+				<MkAvatar class="avatar" :user="message.groupId ? message.user : isMe(message) ? message.recipient : message.user" :show-indicator="true"/>
 				<header v-if="message.groupId">
 					<span class="name">{{ message.group.name }}</span>
-					<mk-time :time="message.createdAt"/>
+					<MkTime :time="message.createdAt" class="time"/>
 				</header>
 				<header v-else>
-					<span class="name"><mk-user-name :user="isMe(message) ? message.recipient : message.user"/></span>
-					<span class="username">@{{ isMe(message) ? message.recipient : message.user | acct }}</span>
-					<mk-time :time="message.createdAt"/>
+					<span class="name"><MkUserName :user="isMe(message) ? message.recipient : message.user"/></span>
+					<span class="username">@{{ acct(isMe(message) ? message.recipient : message.user) }}</span>
+					<MkTime :time="message.createdAt" class="time"/>
 				</header>
 				<div class="body">
-					<p class="text"><span class="me" v-if="isMe(message)">{{ $t('you') }}:</span>{{ message.text }}</p>
+					<p class="text"><span class="me" v-if="isMe(message)">{{ $ts.you }}:</span>{{ message.text }}</p>
 				</div>
 			</div>
-		</router-link>
+		</MkA>
 	</div>
 	<div class="_fullinfo" v-if="!fetching && messages.length == 0">
 		<img src="https://xn--931a.moe/assets/info.jpg" class="_ghost"/>
-		<div>{{ $t('noHistory') }}</div>
+		<div>{{ $ts.noHistory }}</div>
 	</div>
-	<mk-loading v-if="fetching"/>
+	<MkLoading v-if="fetching"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faUser, faUsers, faComments, faPlus } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../../i18n';
-import getAcct from '../../../misc/acct/render';
-import MkButton from '../../components/ui/button.vue';
-import MkUserSelect from '../../components/user-select.vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
+import getAcct from '@/misc/acct/render';
+import MkButton from '@client/components/ui/button.vue';
+import { acct } from '../../filters/user';
+import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
-export default Vue.extend({
-	i18n,
-
+export default defineComponent({
 	components: {
 		MkButton
 	},
 
 	data() {
 		return {
+			[symbols.PAGE_INFO]: {
+				title: this.$ts.messaging,
+				icon: 'fas fa-comments'
+			},
 			fetching: true,
 			moreFetching: false,
 			messages: [],
 			connection: null,
-			faUser, faUsers, faComments, faPlus
 		};
 	},
 
 	mounted() {
-		this.connection = this.$root.stream.useSharedConnection('messagingIndex');
+		this.connection = os.stream.useSharedConnection('messagingIndex');
 
 		this.connection.on('message', this.onMessage);
 		this.connection.on('read', this.onRead);
 
-		this.$root.api('messaging/history', { group: false }).then(userMessages => {
-			this.$root.api('messaging/history', { group: true }).then(groupMessages => {
+		os.api('messaging/history', { group: false }).then(userMessages => {
+			os.api('messaging/history', { group: true }).then(groupMessages => {
 				const messages = userMessages.concat(groupMessages);
 				messages.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 				this.messages = messages;
@@ -80,7 +78,7 @@ export default Vue.extend({
 		});
 	},
 
-	beforeDestroy() {
+	beforeUnmount() {
 		this.connection.dispose();
 	},
 
@@ -88,7 +86,7 @@ export default Vue.extend({
 		getAcct,
 
 		isMe(message) {
-			return message.userId == this.$store.state.i.id;
+			return message.userId == this.$i.id;
 		},
 
 		onMessage(message) {
@@ -111,48 +109,44 @@ export default Vue.extend({
 					if (found.recipientId) {
 						found.isRead = true;
 					} else if (found.groupId) {
-						found.reads.push(this.$store.state.i.id);
+						found.reads.push(this.$i.id);
 					}
 				}
 			}
 		},
 
 		start(ev) {
-			this.$root.menu({
-				items: [{
-					text: this.$t('messagingWithUser'),
-					icon: faUser,
-					action: () => { this.startUser() }
-				}, {
-					text: this.$t('messagingWithGroup'),
-					icon: faUsers,
-					action: () => { this.startGroup() }
-				}],
-				noCenter: true,
-				source: ev.currentTarget || ev.target,
-			});
+			os.modalMenu([{
+				text: this.$ts.messagingWithUser,
+				icon: 'fas fa-user',
+				action: () => { this.startUser() }
+			}, {
+				text: this.$ts.messagingWithGroup,
+				icon: 'fas fa-users',
+				action: () => { this.startGroup() }
+			}], ev.currentTarget || ev.target);
 		},
 
 		async startUser() {
-			this.$root.new(MkUserSelect, {}).$once('selected', user => {
+			os.selectUser().then(user => {
 				this.$router.push(`/my/messaging/${getAcct(user)}`);
 			});
 		},
 
 		async startGroup() {
-			const groups1 = await this.$root.api('users/groups/owned');
-			const groups2 = await this.$root.api('users/groups/joined');
+			const groups1 = await os.api('users/groups/owned');
+			const groups2 = await os.api('users/groups/joined');
 			if (groups1.length === 0 && groups2.length === 0) {
-				this.$root.dialog({
+				os.dialog({
 					type: 'warning',
-					title: this.$t('youHaveNoGroups'),
-					text: this.$t('joinOrCreateGroup'),
+					title: this.$ts.youHaveNoGroups,
+					text: this.$ts.joinOrCreateGroup,
 				});
 				return;
 			}
-			const { canceled, result: group } = await this.$root.dialog({
+			const { canceled, result: group } = await os.dialog({
 				type: null,
-				title: this.$t('group'),
+				title: this.$ts.group,
 				select: {
 					items: groups1.concat(groups2).map(group => ({
 						value: group, text: group.name
@@ -162,27 +156,25 @@ export default Vue.extend({
 			});
 			if (canceled) return;
 			this.$router.push(`/my/messaging/group/${group.id}`);
-		}
+		},
+
+		acct
 	}
 });
 </script>
 
 <style lang="scss" scoped>
-.mk-messaging {
+.yweeujhr {
 
 	> .start {
-		margin: 0 auto 16px auto;
+		margin: var(--margin) auto var(--margin) auto;
 	}
 
 	> .history {
 		> .message {
 			display: block;
 			text-decoration: none;
-			margin-bottom: 16px;
-
-			@media (max-width: 500px) {
-				margin-bottom: 8px;
-			}
+			margin-bottom: var(--margin);
 
 			* {
 				pointer-events: none;
@@ -198,14 +190,14 @@ export default Vue.extend({
 			&:active {
 			}
 
-			&[data-is-read],
-			&[data-is-me] {
+			&.isRead,
+			&.isMe {
 				opacity: 0.8;
 			}
 
-			&:not([data-is-me]):not([data-is-read]) {
+			&:not(.isMe):not(.isRead) {
 				> div {
-					background-image: url("/assets/unread.svg");
+					background-image: url("/static-assets/client/unread.svg");
 					background-repeat: no-repeat;
 					background-position: 0 center;
 				}
@@ -247,7 +239,7 @@ export default Vue.extend({
 						margin: 0 8px;
 					}
 
-					> .mk-time {
+					> .time {
 						margin: 0 0 0 auto;
 					}
 				}
@@ -287,10 +279,10 @@ export default Vue.extend({
 		}
 	}
 
-	@media (max-width: 400px) {
+	&.max-width_400px {
 		> .history {
 			> .message {
-				&:not([data-is-me]):not([data-is-read]) {
+				&:not(.isMe):not(.isRead) {
 					> div {
 						background-image: none;
 						border-left: solid 4px #3aa2dc;

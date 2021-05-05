@@ -24,9 +24,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	props: ['data'],
 	created() {
 		for (const d of this.data) {
@@ -51,14 +52,14 @@ export default Vue.extend({
 				weekday: date.getDay()
 			};
 
-			d.v = peak == 0 ? 0 : d.total / (peak / 2);
+			d.v = peak === 0 ? 0 : d.total / (peak / 2);
 			if (d.v > 1) d.v = 1;
-			const ch = d.date.weekday == 0 || d.date.weekday == 6 ? 275 : 170;
+			const ch = d.date.weekday === 0 || d.date.weekday === 6 ? 275 : 170;
 			const cs = d.v * 100;
 			const cl = 15 + ((1 - d.v) * 80);
 			d.color = `hsl(${ch}, ${cs}%, ${cl}%)`;
 
-			if (d.date.weekday == 0) x--;
+			if (d.date.weekday === 0) x--;
 		});
 	}
 });

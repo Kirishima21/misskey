@@ -1,28 +1,34 @@
 <template>
-<div class="wrpstxzv" v-size="[{ max: 450 }]">
-	<mk-avatar class="avatar" :user="note.user"/>
+<div class="wrpstxzv" :class="{ children }" v-size="{ max: [450] }">
 	<div class="main">
-		<x-note-header class="header" :note="note" :mini="true"/>
+		<MkAvatar class="avatar" :user="note.user"/>
 		<div class="body">
-			<p v-if="note.cw != null" class="cw">
-				<mfm v-if="note.cw != ''" class="text" :text="note.cw" :author="note.user" :i="$store.state.i" :custom-emojis="note.emojis" />
-				<x-cw-button v-model="showContent" :note="note"/>
-			</p>
-			<div class="content" v-show="note.cw == null || showContent">
-				<x-sub-note-content class="text" :note="note"/>
+			<XNoteHeader class="header" :note="note" :mini="true"/>
+			<div class="body">
+				<p v-if="note.cw != null" class="cw">
+					<Mfm v-if="note.cw != ''" class="text" :text="note.cw" :author="note.user" :i="$i" :custom-emojis="note.emojis" />
+					<XCwButton v-model:value="showContent" :note="note"/>
+				</p>
+				<div class="content" v-show="note.cw == null || showContent">
+					<XSubNote-content class="text" :note="note"/>
+				</div>
 			</div>
 		</div>
 	</div>
+	<XSub v-for="reply in replies" :key="reply.id" :note="reply" class="reply" :detail="true" :children="true"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import XNoteHeader from './note-header.vue';
 import XSubNoteContent from './sub-note-content.vue';
 import XCwButton from './cw-button.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
+	name: 'XSub',
+
 	components: {
 		XNoteHeader,
 		XSubNoteContent,
@@ -34,6 +40,16 @@ export default Vue.extend({
 			type: Object,
 			required: true
 		},
+		detail: {
+			type: Boolean,
+			required: false,
+			default: false
+		},
+		children: {
+			type: Boolean,
+			required: false,
+			default: false
+		},
 		// TODO
 		truncate: {
 			type: Boolean,
@@ -41,23 +57,28 @@ export default Vue.extend({
 		}
 	},
 
-	inject: {
-		narrow: {
-			default: false
-		}
-	},
-
 	data() {
 		return {
-			showContent: false
+			showContent: false,
+			replies: [],
 		};
-	}
+	},
+
+	created() {
+		if (this.detail) {
+			os.api('notes/children', {
+				noteId: this.note.id,
+				limit: 5
+			}).then(replies => {
+				this.replies = replies;
+			});
+		}
+	},
 });
 </script>
 
 <style lang="scss" scoped>
 .wrpstxzv {
-	display: flex;
 	padding: 16px 32px;
 	font-size: 0.9em;
 
@@ -65,43 +86,61 @@ export default Vue.extend({
 		padding: 14px 16px;
 	}
 
-	> .avatar {
-		flex-shrink: 0;
-		display: block;
-		margin: 0 8px 0 0;
-		width: 38px;
-		height: 38px;
-		border-radius: 8px;
+	&.children {
+		padding: 10px 0 0 16px;
+		font-size: 1em;
+
+		&.max-width_450px {
+			padding: 10px 0 0 8px;
+		}
 	}
 
 	> .main {
-		flex: 1;
-		min-width: 0;
+		display: flex;
 
-		> .header {
-			margin-bottom: 2px;
+		> .avatar {
+			flex-shrink: 0;
+			display: block;
+			margin: 0 8px 0 0;
+			width: 38px;
+			height: 38px;
+			border-radius: 8px;
 		}
 
 		> .body {
-			> .cw {
-				cursor: default;
-				display: block;
-				margin: 0;
-				padding: 0;
-				overflow-wrap: break-word;
+			flex: 1;
+			min-width: 0;
 
-				> .text {
-					margin-right: 8px;
-				}
+			> .header {
+				margin-bottom: 2px;
 			}
 
-			> .content {
-				> .text {
+			> .body {
+				> .cw {
+					cursor: default;
+					display: block;
 					margin: 0;
 					padding: 0;
+					overflow-wrap: break-word;
+
+					> .text {
+						margin-right: 8px;
+					}
+				}
+
+				> .content {
+					> .text {
+						margin: 0;
+						padding: 0;
+					}
 				}
 			}
 		}
+	}
+
+	> .reply {
+		border-left: solid 0.5px var(--divider);
+		margin-top: 10px;
 	}
 }
 </style>

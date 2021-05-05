@@ -1,5 +1,9 @@
+// https://github.com/typeorm/typeorm/issues/2400
+const types = require('pg').types;
+types.setTypeParser(20, Number);
+
 import { createConnection, Logger, getConnection } from 'typeorm';
-import config from '../config';
+import config from '@/config';
 import { entities as charts } from '../services/chart/entities';
 import { dbLogger } from './logger';
 import * as highlight from 'cli-highlight';
@@ -38,7 +42,7 @@ import { FollowRequest } from '../models/entities/follow-request';
 import { Emoji } from '../models/entities/emoji';
 import { ReversiGame } from '../models/entities/games/reversi/game';
 import { ReversiMatching } from '../models/entities/games/reversi/matching';
-import { UserNotePining } from '../models/entities/user-note-pinings';
+import { UserNotePining } from '../models/entities/user-note-pining';
 import { Poll } from '../models/entities/poll';
 import { UserKeypair } from '../models/entities/user-keypair';
 import { UserPublickey } from '../models/entities/user-publickey';
@@ -47,6 +51,8 @@ import { UserSecurityKey } from '../models/entities/user-security-key';
 import { AttestationChallenge } from '../models/entities/attestation-challenge';
 import { Page } from '../models/entities/page';
 import { PageLike } from '../models/entities/page-like';
+import { GalleryPost } from '../models/entities/gallery-post';
+import { GalleryLike } from '../models/entities/gallery-like';
 import { ModerationLog } from '../models/entities/moderation-log';
 import { UsedUsername } from '../models/entities/used-username';
 import { Announcement } from '../models/entities/announcement';
@@ -58,6 +64,14 @@ import { AntennaNote } from '../models/entities/antenna-note';
 import { PromoNote } from '../models/entities/promo-note';
 import { PromoRead } from '../models/entities/promo-read';
 import { program } from '../argv';
+import { Relay } from '../models/entities/relay';
+import { MutedNote } from '../models/entities/muted-note';
+import { Channel } from '../models/entities/channel';
+import { ChannelFollowing } from '../models/entities/channel-following';
+import { ChannelNotePining } from '../models/entities/channel-note-pining';
+import { RegistryItem } from '../models/entities/registry-item';
+import { Ad } from '../models/entities/ad';
+import { PasswordResetRequest } from '@/models/entities/password-reset-request';
 
 const sqlLogger = dbLogger.createSubLogger('sql', 'white', false);
 
@@ -127,6 +141,8 @@ export const entities = [
 	NoteUnread,
 	Page,
 	PageLike,
+	GalleryPost,
+	GalleryLike,
 	Log,
 	DriveFile,
 	DriveFolder,
@@ -149,6 +165,14 @@ export const entities = [
 	PromoRead,
 	ReversiGame,
 	ReversiMatching,
+	Relay,
+	MutedNote,
+	Channel,
+	ChannelFollowing,
+	ChannelNotePining,
+	RegistryItem,
+	Ad,
+	PasswordResetRequest,
 	...charts as any
 ];
 

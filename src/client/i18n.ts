@@ -1,12 +1,13 @@
-import Vue from 'vue';
-import VueI18n from 'vue-i18n';
-import { lang, locale } from './config';
+import { markRaw } from 'vue';
+import { locale } from '@client/config';
+import { I18n } from '@/misc/i18n';
 
-Vue.use(VueI18n);
+export const i18n = markRaw(new I18n(locale));
 
-export default new VueI18n({
-	locale: lang,
-	messages: {
-		[lang]: locale
+// このファイルに書きたくないけどここに書かないと何故かVeturが認識しない
+declare module '@vue/runtime-core' {
+	interface ComponentCustomProperties {
+		$t: typeof i18n['t'];
+		$ts: typeof i18n['locale'];
 	}
-});
+}

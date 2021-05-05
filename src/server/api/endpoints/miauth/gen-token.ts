@@ -1,8 +1,8 @@
-import rndstr from 'rndstr';
 import $ from 'cafy';
 import define from '../../define';
 import { AccessTokens } from '../../../../models';
-import { genId } from '../../../../misc/gen-id';
+import { genId } from '@/misc/gen-id';
+import { secureRndstr } from '@/misc/secure-rndstr';
 
 export const meta = {
 	tags: ['auth'],
@@ -13,7 +13,7 @@ export const meta = {
 
 	params: {
 		session: {
-			validator: $.str
+			validator: $.nullable.str
 		},
 
 		name: {
@@ -32,17 +32,30 @@ export const meta = {
 			validator: $.arr($.str).unique(),
 		},
 	},
+
+	res: {
+		type: 'object' as const,
+		optional: false as const, nullable: false as const,
+		properties: {
+			token: {
+				type: 'string' as const,
+				optional: false as const, nullable: false as const
+			}
+		}
+	}
 };
 
 export default define(meta, async (ps, user) => {
 	// Generate access token
-	const accessToken = rndstr('a-zA-Z0-9', 32);
+	const accessToken = secureRndstr(32, true);
+
+	const now = new Date();
 
 	// Insert access token doc
-	await AccessTokens.save({
+	await AccessTokens.insert({
 		id: genId(),
-		createdAt: new Date(),
-		lastUsedAt: new Date(),
+		createdAt: now,
+		lastUsedAt: now,
 		session: ps.session,
 		userId: user.id,
 		token: accessToken,
@@ -52,4 +65,8 @@ export default define(meta, async (ps, user) => {
 		iconUrl: ps.iconUrl,
 		permission: ps.permission,
 	});
+
+	return {
+		token: accessToken
+	};
 });

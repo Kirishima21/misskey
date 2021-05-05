@@ -1,35 +1,42 @@
 <template>
-<div>
-	<mk-container :show-header="props.design === 0" :naked="props.design === 2" :class="$style.root" :data-melt="props.design == 2">
-		<template #header><fa :icon="faCamera"/>{{ $t('_widgets.photos') }}</template>
+<MkContainer :show-header="props.showHeader" :naked="props.transparent" :class="$style.root" :data-transparent="props.transparent ? true : null">
+	<template #header><i class="fas fa-camera"></i>{{ $ts._widgets.photos }}</template>
 
-		<div class="">
-			<mk-loading v-if="fetching"/>
-			<div v-else :class="$style.stream">
-				<div v-for="(image, i) in images" :key="i"
-					:class="$style.img"
-					:style="`background-image: url(${thumbnail(image)})`"
-				></div>
-			</div>
+	<div class="">
+		<MkLoading v-if="fetching"/>
+		<div v-else :class="$style.stream">
+			<div v-for="(image, i) in images" :key="i"
+				:class="$style.img"
+				:style="`background-image: url(${thumbnail(image)})`"
+			></div>
 		</div>
-	</mk-container>
-</div>
+	</div>
+</MkContainer>
 </template>
 
 <script lang="ts">
-import { faCamera } from '@fortawesome/free-solid-svg-icons';
-import MkContainer from '../components/ui/container.vue';
+import { defineComponent } from 'vue';
+import MkContainer from '@client/components/ui/container.vue';
 import define from './define';
-import i18n from '../i18n';
-import { getStaticImageUrl } from '../scripts/get-static-image-url';
+import { getStaticImageUrl } from '@client/scripts/get-static-image-url';
+import * as os from '@client/os';
 
-export default define({
+const widget = define({
 	name: 'photos',
 	props: () => ({
-		design: 0,
+		showHeader: {
+			type: 'boolean',
+			default: true,
+		},
+		transparent: {
+			type: 'boolean',
+			default: false,
+		},
 	})
-}).extend({
-	i18n,
+});
+
+export default defineComponent({
+	extends: widget,
 	components: {
 		MkContainer,
 	},
@@ -38,15 +45,14 @@ export default define({
 			images: [],
 			fetching: true,
 			connection: null,
-			faCamera
 		};
 	},
 	mounted() {
-		this.connection = this.$root.stream.useSharedConnection('main');
+		this.connection = os.stream.useSharedConnection('main');
 
 		this.connection.on('driveFileCreated', this.onDriveFileCreated);
 
-		this.$root.api('drive/stream', {
+		os.api('drive/stream', {
 			type: 'image/*',
 			limit: 9
 		}).then(images => {
@@ -54,7 +60,7 @@ export default define({
 			this.fetching = false;
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.connection.dispose();
 	},
 	methods: {
@@ -65,17 +71,8 @@ export default define({
 			}
 		},
 
-		func() {
-			if (this.props.design == 2) {
-				this.props.design = 0;
-			} else {
-				this.props.design++;
-			}
-			this.save();
-		},
-
 		thumbnail(image: any): string {
-			return this.$store.state.device.disableShowingAnimatedImages
+			return this.$store.state.disableShowingAnimatedImages
 				? getStaticImageUrl(image.thumbnailUrl)
 				: image.thumbnailUrl;
 		},
@@ -84,7 +81,7 @@ export default define({
 </script>
 
 <style lang="scss" module>
-.root[data-melt] {
+.root[data-transparent] {
 	.stream {
 		padding: 0;
 	}

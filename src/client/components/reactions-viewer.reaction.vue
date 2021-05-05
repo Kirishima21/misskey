@@ -1,25 +1,28 @@
 <template>
 <button
 	class="hkzvhatu _button"
-	:class="{ reacted: note.myReaction == reaction }"
+	:class="{ reacted: note.myReaction == reaction, canToggle }"
 	@click="toggleReaction(reaction)"
 	v-if="count > 0"
+	@touchstart.passive="onMouseover"
 	@mouseover="onMouseover"
 	@mouseleave="onMouseleave"
+	@touchend="onMouseleave"
 	ref="reaction"
-	v-particle
+	v-particle="canToggle"
 >
-	<x-reaction-icon :reaction="reaction" ref="icon"/>
+	<XReactionIcon :reaction="reaction" :custom-emojis="note.emojis"/>
 	<span>{{ count }}</span>
 </button>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import XDetails from './reactions-viewer.details.vue';
-import XReactionIcon from './reaction-icon.vue';
+import { defineComponent, ref } from 'vue';
+import XDetails from '@client/components/reactions-viewer.details.vue';
+import XReactionIcon from '@client/components/reaction-icon.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		XReactionIcon
 	},
@@ -40,69 +43,64 @@ export default Vue.extend({
 			type: Object,
 			required: true,
 		},
-		canToggle: {
-			type: Boolean,
-			required: false,
-			default: true,
-		},
 	},
 	data() {
 		return {
-			details: null,
+			close: null,
 			detailsTimeoutId: null,
 			isHovering: false
 		};
 	},
 	computed: {
-		isMe(): boolean {
-			return this.$store.getters.isSignedIn && this.$store.state.i.id === this.note.userId;
+		canToggle(): boolean {
+			return !this.reaction.match(/@\w/) && this.$i;
+		},
+	},
+	watch: {
+		count(newCount, oldCount) {
+			if (oldCount < newCount) this.anime();
+			if (this.close != null) this.openDetails();
 		},
 	},
 	mounted() {
 		if (!this.isInitial) this.anime();
 	},
-	watch: {
-		count(newCount, oldCount) {
-			if (oldCount < newCount) this.anime();
-			if (this.details != null) this.openDetails();
-		},
-	},
 	methods: {
 		toggleReaction() {
-			if (this.isMe) return;
 			if (!this.canToggle) return;
 
 			const oldReaction = this.note.myReaction;
 			if (oldReaction) {
-				this.$root.api('notes/reactions/delete', {
+				os.api('notes/reactions/delete', {
 					noteId: this.note.id
 				}).then(() => {
 					if (oldReaction !== this.reaction) {
-						this.$root.api('notes/reactions/create', {
+						os.api('notes/reactions/create', {
 							noteId: this.note.id,
 							reaction: this.reaction
 						});
 					}
 				});
 			} else {
-				this.$root.api('notes/reactions/create', {
+				os.api('notes/reactions/create', {
 					noteId: this.note.id,
 					reaction: this.reaction
 				});
 			}
 		},
 		onMouseover() {
+			if (this.isHovering) return;
 			this.isHovering = true;
 			this.detailsTimeoutId = setTimeout(this.openDetails, 300);
 		},
 		onMouseleave() {
+			if (!this.isHovering) return;
 			this.isHovering = false;
 			clearTimeout(this.detailsTimeoutId);
 			this.closeDetails();
 		},
 		openDetails() {
-			if (this.$root.isMobile) return;
-			this.$root.api('notes/reactions', {
+			os.api('notes/reactions', {
 				noteId: this.note.id,
 				type: this.reaction,
 				limit: 11
@@ -113,18 +111,26 @@ export default Vue.extend({
 
 				this.closeDetails();
 				if (!this.isHovering) return;
-				this.details = this.$root.new(XDetails, {
+
+				const showing = ref(true);
+				os.popup(XDetails, {
+					showing,
 					reaction: this.reaction,
+					emojis: this.note.emojis,
 					users,
 					count: this.count,
 					source: this.$refs.reaction
-				});
+				}, {}, 'closed');
+
+				this.close = () => {
+					showing.value = false;
+				};
 			});
 		},
 		closeDetails() {
-			if (this.details != null) {
-				this.details.close();
-				this.details = null;
+			if (this.close != null) {
+				this.close();
+				this.close = null;
 			}
 		},
 		anime() {
@@ -144,19 +150,27 @@ export default Vue.extend({
 	padding: 0 6px;
 	border-radius: 4px;
 
-	&.reacted {
-		background: var(--accent);
-
-		> span {
-			color: #fff;
-		}
-	}
-
-	&:not(.reacted) {
+	&.canToggle {
 		background: rgba(0, 0, 0, 0.05);
 
 		&:hover {
 			background: rgba(0, 0, 0, 0.1);
+		}
+	}
+
+	&:not(.canToggle) {
+		cursor: default;
+	}
+
+	&.reacted {
+		background: var(--accent);
+
+		&:hover {
+			background: var(--accent);
+		}
+
+		> span {
+			color: #fff;
 		}
 	}
 

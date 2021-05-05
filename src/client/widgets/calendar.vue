@@ -1,6 +1,6 @@
 <template>
-<div class="mkw-calendar" :class="{ _panel: props.design === 0 }">
-	<div class="calendar" :data-is-holiday="isHoliday">
+<div class="mkw-calendar" :class="{ _panel: !props.transparent }">
+	<div class="calendar" :class="{ isHoliday }">
 		<p class="month-and-year">
 			<span class="year">{{ $t('yearX', { year }) }}</span>
 			<span class="month">{{ $t('monthX', { month }) }}</span>
@@ -10,19 +10,19 @@
 	</div>
 	<div class="info">
 		<div>
-			<p>{{ $t('today') }}: <b>{{ dayP.toFixed(1) }}%</b></p>
+			<p>{{ $ts.today }}: <b>{{ dayP.toFixed(1) }}%</b></p>
 			<div class="meter">
 				<div class="val" :style="{ width: `${dayP}%` }"></div>
 			</div>
 		</div>
 		<div>
-			<p>{{ $t('thisMonth') }}: <b>{{ monthP.toFixed(1) }}%</b></p>
+			<p>{{ $ts.thisMonth }}: <b>{{ monthP.toFixed(1) }}%</b></p>
 			<div class="meter">
 				<div class="val" :style="{ width: `${monthP}%` }"></div>
 			</div>
 		</div>
 		<div>
-			<p>{{ $t('thisYear') }}: <b>{{ yearP.toFixed(1) }}%</b></p>
+			<p>{{ $ts.thisYear }}: <b>{{ yearP.toFixed(1) }}%</b></p>
 			<div class="meter">
 				<div class="val" :style="{ width: `${yearP}%` }"></div>
 			</div>
@@ -32,16 +32,22 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import define from './define';
-import i18n from '../i18n';
+import * as os from '@client/os';
 
-export default define({
+const widget = define({
 	name: 'calendar',
 	props: () => ({
-		design: 0
+		transparent: {
+			type: 'boolean',
+			default: false,
+		},
 	})
-}).extend({
-	i18n,
+});
+
+export default defineComponent({
+	extends: widget,
 	data() {
 		return {
 			now: new Date(),
@@ -60,18 +66,10 @@ export default define({
 		this.tick();
 		this.clock = setInterval(this.tick, 1000);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		clearInterval(this.clock);
 	},
 	methods: {
-		func() {
-			if (this.props.design == 2) {
-				this.props.design = 0;
-			} else {
-				this.props.design++;
-			}
-			this.save();
-		},
 		tick() {
 			const now = new Date();
 			const nd = now.getDate();
@@ -82,13 +80,13 @@ export default define({
 			this.month = nm + 1;
 			this.day = nd;
 			this.weekDay = [
-				this.$t('_weekday.sunday'),
-				this.$t('_weekday.monday'),
-				this.$t('_weekday.tuesday'),
-				this.$t('_weekday.wednesday'),
-				this.$t('_weekday.thursday'),
-				this.$t('_weekday.friday'),
-				this.$t('_weekday.saturday')
+				this.$ts._weekday.sunday,
+				this.$ts._weekday.monday,
+				this.$ts._weekday.tuesday,
+				this.$ts._weekday.wednesday,
+				this.$ts._weekday.thursday,
+				this.$ts._weekday.friday,
+				this.$ts._weekday.saturday
 			][now.getDay()];
 
 			const dayNumer   = now.getTime() - new Date(ny, nm, nd).getTime();
@@ -102,7 +100,7 @@ export default define({
 			this.monthP = monthNumer / monthDenom * 100;
 			this.yearP  = yearNumer  / yearDenom  * 100;
 
-			this.isHoliday = now.getDay() == 0 || now.getDay() == 6;
+			this.isHoliday = now.getDay() === 0 || now.getDay() === 6;
 		}
 	}
 });
@@ -123,7 +121,7 @@ export default define({
 		width: 60%;
 		text-align: center;
 
-		&[data-is-holiday] {
+		&.isHoliday {
 			> .day {
 				color: #ef95a0;
 			}
@@ -174,7 +172,7 @@ export default define({
 			> .meter {
 				width: 100%;
 				overflow: hidden;
-				background: var(--aupeazdm);
+				background: var(--X11);
 				border-radius: 8px;
 
 				> .val {

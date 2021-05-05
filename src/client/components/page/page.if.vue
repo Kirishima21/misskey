@@ -1,29 +1,31 @@
 <template>
-<div v-show="script.vars[value.var]">
-	<x-block v-for="child in value.children" :value="child" :page="page" :script="script" :key="child.id" :h="h"/>
+<div v-show="hpml.vars.value[block.var]">
+	<XBlock v-for="child in block.children" :block="child" :hpml="hpml" :key="child.id" :h="h"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { IfBlock } from '@client/scripts/hpml/block';
+import { Hpml } from '@client/scripts/hpml/evaluator';
+import { defineComponent, defineAsyncComponent, PropType } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
+	components: {
+		XBlock: defineAsyncComponent(() => import('./page.block.vue'))
+	},
 	props: {
-		value: {
+		block: {
+			type: Object as PropType<IfBlock>,
 			required: true
 		},
-		script: {
-			required: true
-		},
-		page: {
+		hpml: {
+			type: Object as PropType<Hpml>,
 			required: true
 		},
 		h: {
+			type: Number,
 			required: true
 		}
-	},
-	beforeCreate() {
-		this.$options.components.XBlock = require('./page.block.vue').default;
 	},
 });
 </script>

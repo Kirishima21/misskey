@@ -1,47 +1,47 @@
 <template>
 <div class="zmdxowus">
 	<p class="caution" v-if="choices.length < 2">
-		<fa :icon="faExclamationTriangle"/>{{ $t('_poll.noOnlyOneChoice') }}
+		<i class="fas fa-exclamation-triangle"></i>{{ $ts._poll.noOnlyOneChoice }}
 	</p>
 	<ul ref="choices">
 		<li v-for="(choice, i) in choices" :key="i">
-			<mk-input class="input" :value="choice" @input="onInput(i, $event)">
+			<MkInput class="input" :value="choice" @update:value="onInput(i, $event)">
 				<span>{{ $t('_poll.choiceN', { n: i + 1 }) }}</span>
-			</mk-input>
+			</MkInput>
 			<button @click="remove(i)" class="_button">
-				<fa :icon="faTimes"/>
+				<i class="fas fa-times"></i>
 			</button>
 		</li>
 	</ul>
-	<mk-button class="add" v-if="choices.length < 10" @click="add">{{ $t('add') }}</mk-button>
-	<mk-button class="add" v-else disabled>{{ $t('_poll.noMore') }}</mk-button>
+	<MkButton class="add" v-if="choices.length < 10" @click="add">{{ $ts.add }}</MkButton>
+	<MkButton class="add" v-else disabled>{{ $ts._poll.noMore }}</MkButton>
 	<section>
-		<mk-switch v-model="multiple">{{ $t('_poll.canMultipleVote') }}</mk-switch>
+		<MkSwitch v-model:value="multiple">{{ $ts._poll.canMultipleVote }}</MkSwitch>
 		<div>
-			<mk-select v-model="expiration">
-				<template #label>{{ $t('_poll.expiration') }}</template>
-				<option value="infinite">{{ $t('_poll.infinite') }}</option>
-				<option value="at">{{ $t('_poll.at') }}</option>
-				<option value="after">{{ $t('_poll.after') }}</option>
-			</mk-select>
+			<MkSelect v-model:value="expiration">
+				<template #label>{{ $ts._poll.expiration }}</template>
+				<option value="infinite">{{ $ts._poll.infinite }}</option>
+				<option value="at">{{ $ts._poll.at }}</option>
+				<option value="after">{{ $ts._poll.after }}</option>
+			</MkSelect>
 			<section v-if="expiration === 'at'">
-				<mk-input v-model="atDate" type="date" class="input">
-					<span>{{ $t('_poll.deadlineDate') }}</span>
-				</mk-input>
-				<mk-input v-model="atTime" type="time" class="input">
-					<span>{{ $t('_poll.deadlineTime') }}</span>
-				</mk-input>
+				<MkInput v-model:value="atDate" type="date" class="input">
+					<span>{{ $ts._poll.deadlineDate }}</span>
+				</MkInput>
+				<MkInput v-model:value="atTime" type="time" class="input">
+					<span>{{ $ts._poll.deadlineTime }}</span>
+				</MkInput>
 			</section>
 			<section v-if="expiration === 'after'">
-				<mk-input v-model="after" type="number" class="input">
-					<span>{{ $t('_poll.duration') }}</span>
-				</mk-input>
-				<mk-select v-model="unit">
-					<option value="second">{{ $t('_time.second') }}</option>
-					<option value="minute">{{ $t('_time.minute') }}</option>
-					<option value="hour">{{ $t('_time.hour') }}</option>
-					<option value="day">{{ $t('_time.day') }}</option>
-				</mk-select>
+				<MkInput v-model:value="after" type="number" class="input">
+					<span>{{ $ts._poll.duration }}</span>
+				</MkInput>
+				<MkSelect v-model:value="unit">
+					<option value="second">{{ $ts._time.second }}</option>
+					<option value="minute">{{ $ts._time.minute }}</option>
+					<option value="hour">{{ $ts._time.hour }}</option>
+					<option value="day">{{ $ts._time.day }}</option>
+				</MkSelect>
 			</section>
 		</div>
 	</section>
@@ -49,51 +49,100 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faExclamationTriangle, faTimes } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../i18n';
-import { erase } from '../../prelude/array';
+import { defineComponent } from 'vue';
 import { addTime } from '../../prelude/time';
-import { formatDateTimeString } from '../../misc/format-time-string';
+import { formatDateTimeString } from '@/misc/format-time-string';
 import MkInput from './ui/input.vue';
 import MkSelect from './ui/select.vue';
 import MkSwitch from './ui/switch.vue';
 import MkButton from './ui/button.vue';
 
-export default Vue.extend({
-	i18n,
+export default defineComponent({
 	components: {
 		MkInput,
 		MkSelect,
 		MkSwitch,
 		MkButton,
 	},
+
+	props: {
+		poll: {
+			type: Object,
+			required: true
+		}
+	},
+
+	emits: ['updated'],
+
 	data() {
 		return {
-			choices: ['', ''],
-			multiple: false,
+			choices: this.poll.choices,
+			multiple: this.poll.multiple,
 			expiration: 'infinite',
 			atDate: formatDateTimeString(addTime(new Date(), 1, 'day'), 'yyyy-MM-dd'),
 			atTime: '00:00',
 			after: 0,
 			unit: 'second',
-			faExclamationTriangle, faTimes
 		};
 	},
+
 	watch: {
-		choices() {
-			this.$emit('updated');
+		choices: {
+			handler() {
+				this.$emit('updated', this.get());
+			},
+			deep: true
+		},
+		multiple: {
+			handler() {
+				this.$emit('updated', this.get());
+			},
+		},
+		expiration: {
+			handler() {
+				this.$emit('updated', this.get());
+			},
+		},
+		atDate: {
+			handler() {
+				this.$emit('updated', this.get());
+			},
+		},
+		after: {
+			handler() {
+				this.$emit('updated', this.get());
+			},
+		},
+		unit: {
+			handler() {
+				this.$emit('updated', this.get());
+			},
+		},
+	},
+
+	created() {
+		const poll = this.poll;
+		if (poll.expiresAt) {
+			this.expiration = 'at';
+			this.atDate = this.atTime = poll.expiresAt;
+		} else if (typeof poll.expiredAfter === 'number') {
+			this.expiration = 'after';
+			this.after = poll.expiredAfter / 1000;
+		} else {
+			this.expiration = 'infinite';
 		}
 	},
+
 	methods: {
 		onInput(i, e) {
-			Vue.set(this.choices, i, e);
+			this.choices[i] = e;
 		},
 
 		add() {
 			this.choices.push('');
 			this.$nextTick(() => {
-				(this.$refs.choices as any).childNodes[this.choices.length - 1].childNodes[0].focus();
+				// TODO
+				//(this.$refs.choices as any).childNodes[this.choices.length - 1].childNodes[0].focus();
 			});
 		},
 
@@ -118,29 +167,14 @@ export default Vue.extend({
 			};
 
 			return {
-				choices: erase('', this.choices),
+				choices: this.choices,
 				multiple: this.multiple,
 				...(
 					this.expiration === 'at' ? { expiresAt: at() } :
-					this.expiration === 'after' ? { expiredAfter: after() } : {})
+					this.expiration === 'after' ? { expiredAfter: after() } : {}
+				)
 			};
 		},
-
-		set(data) {
-			if (data.choices.length == 0) return;
-			this.choices = data.choices;
-			if (data.choices.length == 1) this.choices = this.choices.concat('');
-			this.multiple = data.multiple;
-			if (data.expiresAt) {
-				this.expiration = 'at';
-				this.atDate = this.atTime = data.expiresAt;
-			} else if (typeof data.expiredAfter === 'number') {
-				this.expiration = 'after';
-				this.after = data.expiredAfter;
-			} else {
-				this.expiration = 'infinite';
-			}
-		}
 	}
 });
 </script>
@@ -154,7 +188,7 @@ export default Vue.extend({
 		font-size: 0.8em;
 		color: #f00;
 
-		> [data-icon] {
+		> i {
 			margin-right: 4px;
 		}
 	}

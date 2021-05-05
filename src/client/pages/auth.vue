@@ -1,9 +1,9 @@
 <template>
-<div class="_panel" v-if="$store.getters.isSignedIn && fetching">
-	<mk-loading/>
+<div class="" v-if="$i && fetching">
+	<MkLoading/>
 </div>
-<div v-else-if="$store.getters.isSignedIn">
-	<x-form
+<div v-else-if="$i">
+	<XForm
 		class="form"
 		ref="form"
 		v-if="state == 'waiting'"
@@ -11,31 +11,31 @@
 		@denied="state = 'denied'"
 		@accepted="accepted"
 	/>
-	<div class="denied _panel" v-if="state == 'denied'">
-		<h1>{{ $t('_auth.denied') }}</h1>
+	<div class="denied" v-if="state == 'denied'">
+		<h1>{{ $ts._auth.denied }}</h1>
 	</div>
-	<div class="accepted _panel" v-if="state == 'accepted'">
-		<h1>{{ session.app.isAuthorized ? this.$t('already-authorized') : this.$t('allowed') }}</h1>
-		<p v-if="session.app.callbackUrl">{{ $t('_auth.callback') }}<mk-ellipsis/></p>
-		<p v-if="!session.app.callbackUrl">{{ $t('_auth.pleaseGoBack') }}</p>
+	<div class="accepted" v-if="state == 'accepted'">
+		<h1>{{ session.app.isAuthorized ? this.$t('already-authorized') : this.$ts.allowed }}</h1>
+		<p v-if="session.app.callbackUrl">{{ $ts._auth.callback }}<MkEllipsis/></p>
+		<p v-if="!session.app.callbackUrl">{{ $ts._auth.pleaseGoBack }}</p>
 	</div>
-	<div class="error _panel" v-if="state == 'fetch-session-error'">
-		<p>{{ $t('error') }}</p>
+	<div class="error" v-if="state == 'fetch-session-error'">
+		<p>{{ $ts.somethingHappened }}</p>
 	</div>
 </div>
 <div class="signin" v-else>
-	<mk-signin @login="onLogin"/>
+	<MkSignin @login="onLogin"/>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import i18n from '../i18n';
+import { defineComponent } from 'vue';
 import XForm from './auth.form.vue';
-import MkSignin from '../components/signin.vue';
+import MkSignin from '@client/components/signin.vue';
+import * as os from '@client/os';
+import { login } from '@client/account';
 
-export default Vue.extend({
-	i18n,
+export default defineComponent({
 	components: {
 		XForm,
 		MkSignin,
@@ -53,10 +53,10 @@ export default Vue.extend({
 		}
 	},
 	mounted() {
-		if (!this.$store.getters.isSignedIn) return;
+		if (!this.$i) return;
 
 		// Fetch session
-		this.$root.api('auth/session/show', {
+		os.api('auth/session/show', {
 			token: this.token
 		}).then(session => {
 			this.session = session;
@@ -64,7 +64,7 @@ export default Vue.extend({
 
 			// 既に連携していた場合
 			if (this.session.app.isAuthorized) {
-				this.$root.api('auth/accept', {
+				os.api('auth/accept', {
 					token: this.session.token
 				}).then(() => {
 					this.accepted();
@@ -84,8 +84,7 @@ export default Vue.extend({
 				location.href = `${this.session.app.callbackUrl}?token=${this.session.token}`;
 			}
 		}, onLogin(res) {
-			localStorage.setItem('i', res.i);
-			location.reload();
+			login(res.i);
 		}
 	}
 });

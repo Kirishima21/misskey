@@ -1,29 +1,38 @@
 <template>
-<div class="qjewsnkgzzxlxtzncydssfbgjibiehcy" v-if="image.isSensitive && hide && !$store.state.device.alwaysShowNsfw" @click="hide = false">
-	<div>
-		<b><fa :icon="faExclamationTriangle"/> {{ $t('sensitive') }}</b>
-		<span>{{ $t('clickToShow') }}</span>
+<div class="qjewsnkg" v-if="hide" @click="hide = false">
+	<ImgWithBlurhash class="bg" :hash="image.blurhash" :title="image.name"/>
+	<div class="text">
+		<div>
+			<b><i class="fas fa-exclamation-triangle"></i> {{ $ts.sensitive }}</b>
+			<span>{{ $ts.clickToShow }}</span>
+		</div>
 	</div>
 </div>
-<a class="gqnyydlzavusgskkfvwvjiattxdzsqlf" v-else
-	:href="image.url"
-	:style="style"
-	:title="image.name"
-	@click.prevent="onClick"
->
-	<div v-if="image.type === 'image/gif'">GIF</div>
-</a>
+<div class="gqnyydlz" :style="{ background: color }" v-else>
+	<i class="fas fa-eye-slash" @click="hide = true"></i>
+	<a
+		:href="image.url"
+		:title="image.name"
+		@click.prevent="onClick"
+	>
+		<ImgWithBlurhash :hash="image.blurhash" :src="url" :alt="image.name" :title="image.name" :cover="false"/>
+		<div class="gif" v-if="image.type === 'image/gif'">GIF</div>
+	</a>
+</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
-import i18n from '../i18n';
-import { getStaticImageUrl } from '../scripts/get-static-image-url';
+import { defineComponent } from 'vue';
+import { getStaticImageUrl } from '@client/scripts/get-static-image-url';
+import { extractAvgColorFromBlurhash } from '@client/scripts/extract-avg-color-from-blurhash';
 import ImageViewer from './image-viewer.vue';
+import ImgWithBlurhash from '@client/components/img-with-blurhash.vue';
+import * as os from '@client/os';
 
-export default Vue.extend({
-	i18n,
+export default defineComponent({
+	components: {
+		ImgWithBlurhash
+	},
 	props: {
 		image: {
 			type: Object,
@@ -36,40 +45,42 @@ export default Vue.extend({
 	data() {
 		return {
 			hide: true,
-			faExclamationTriangle
+			color: null,
 		};
 	},
 	computed: {
-		style(): any {
-			let url = `url(${
-				this.$store.state.device.disableShowingAnimatedImages
-					? getStaticImageUrl(this.image.thumbnailUrl)
-					: this.image.thumbnailUrl
-			})`;
+		url(): any {
+			let url = this.$store.state.disableShowingAnimatedImages
+				? getStaticImageUrl(this.image.thumbnailUrl)
+				: this.image.thumbnailUrl;
 
-			if (this.$store.state.device.loadRemoteMedia) {
-				url = null;
-			} else if (this.raw || this.$store.state.device.loadRawImages) {
-				url = `url(${this.image.url})`;
+			if (this.raw || this.$store.state.loadRawImages) {
+				url = this.image.url;
 			}
 
-			return {
-				'background-color': this.image.properties.avgColor || 'transparent',
-				'background-image': url
-			};
+			return url;
 		}
+	},
+	created() {
+		// Plugin:register_note_view_interruptor を使って書き換えられる可能性があるためwatchする
+		this.$watch('image', () => {
+			this.hide = (this.$store.state.nsfw === 'force') ? true : this.image.isSensitive && (this.$store.state.nsfw !== 'ignore');
+			if (this.image.blurhash) {
+				this.color = extractAvgColorFromBlurhash(this.image.blurhash);
+			}
+		}, {
+			deep: true,
+			immediate: true,
+		});
 	},
 	methods: {
 		onClick() {
-			if (this.$store.state.device.imageNewTab) {
+			if (this.$store.state.imageNewTab) {
 				window.open(this.image.url, '_blank');
 			} else {
-				const viewer = this.$root.new(ImageViewer, {
+				os.popup(ImageViewer, {
 					image: this.image
-				});
-				this.$once('hook:beforeDestroy', () => {
-					viewer.close();
-				});
+				}, {}, 'closed');
 			}
 		}
 	}
@@ -77,46 +88,79 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
-.gqnyydlzavusgskkfvwvjiattxdzsqlf {
-	display: block;
-	cursor: zoom-in;
-	overflow: hidden;
-	width: 100%;
-	height: 100%;
-	background-position: center;
-	background-size: contain;
-	background-repeat: no-repeat;
+.qjewsnkg {
+	position: relative;
 
-	> div {
-		background-color: var(--fg);
-		border-radius: 6px;
-		color: var(--accentLighten);
-		display: inline-block;
-		font-size: 14px;
-		font-weight: bold;
-		left: 12px;
-		opacity: .5;
-		padding: 0 6px;
-		text-align: center;
-		top: 12px;
-		pointer-events: none;
+	> .bg {
+		filter: brightness(0.5);
+	}
+
+	> .text {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 1;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		> div {
+			display: table-cell;
+			text-align: center;
+			font-size: 0.8em;
+			color: #fff;
+
+			> * {
+				display: block;
+			}
+		}
 	}
 }
 
-.qjewsnkgzzxlxtzncydssfbgjibiehcy {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	background: #111;
-	color: #fff;
+.gqnyydlz {
+	position: relative;
+	border: solid 0.5px var(--divider);
 
-	> div {
-		display: table-cell;
+	> i {
+		display: block;
+		position: absolute;
+		border-radius: 6px;
+		background-color: var(--fg);
+		color: var(--accentLighten);
+		font-size: 14px;
+		opacity: .5;
+		padding: 3px 6px;
 		text-align: center;
-		font-size: 12px;
+		cursor: pointer;
+		top: 12px;
+		right: 12px;
+	}
 
-		> * {
-			display: block;
+	> a {
+		display: block;
+		cursor: zoom-in;
+		overflow: hidden;
+		width: 100%;
+		height: 100%;
+		background-position: center;
+		background-size: contain;
+		background-repeat: no-repeat;
+
+		> .gif {
+			background-color: var(--fg);
+			border-radius: 6px;
+			color: var(--accentLighten);
+			display: inline-block;
+			font-size: 14px;
+			font-weight: bold;
+			left: 12px;
+			opacity: .5;
+			padding: 0 6px;
+			text-align: center;
+			top: 12px;
+			pointer-events: none;
 		}
 	}
 }

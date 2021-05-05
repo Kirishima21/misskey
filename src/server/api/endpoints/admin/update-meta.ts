@@ -3,8 +3,8 @@ import define from '../../define';
 import { getConnection } from 'typeorm';
 import { Meta } from '../../../../models/entities/meta';
 import { insertModerationLog } from '../../../../services/insert-moderation-log';
-import { DB_MAX_NOTE_TEXT_LENGTH } from '../../../../misc/hard-limits';
-import { ID } from '../../../../misc/cafy-id';
+import { DB_MAX_NOTE_TEXT_LENGTH } from '@/misc/hard-limits';
+import { ID } from '@/misc/cafy-id';
 
 export const meta = {
 	desc: {
@@ -94,6 +94,14 @@ export const meta = {
 			}
 		},
 
+		backgroundImageUrl: {
+			validator: $.optional.nullable.str,
+		},
+
+		logoImageUrl: {
+			validator: $.optional.nullable.str,
+		},
+
 		name: {
 			validator: $.optional.nullable.str,
 			desc: {
@@ -145,6 +153,27 @@ export const meta = {
 			}
 		},
 
+		enableHcaptcha: {
+			validator: $.optional.bool,
+			desc: {
+				'ja-JP': 'hCaptchaを使用するか否か'
+			}
+		},
+
+		hcaptchaSiteKey: {
+			validator: $.optional.nullable.str,
+			desc: {
+				'ja-JP': 'hCaptcha site key'
+			}
+		},
+
+		hcaptchaSecretKey: {
+			validator: $.optional.nullable.str,
+			desc: {
+				'ja-JP': 'hCaptcha secret key'
+			}
+		},
+
 		enableRecaptcha: {
 			validator: $.optional.bool,
 			desc: {
@@ -185,6 +214,14 @@ export const meta = {
 			desc: {
 				'ja-JP': 'インスタンス管理者の連絡先メールアドレス'
 			}
+		},
+
+		pinnedPages: {
+			validator: $.optional.arr($.str),
+		},
+
+		pinnedClipId: {
+			validator: $.optional.nullable.type(ID),
 		},
 
 		langs: {
@@ -394,6 +431,18 @@ export const meta = {
 		objectStorageUseSSL: {
 			validator: $.optional.bool
 		},
+
+		objectStorageUseProxy: {
+			validator: $.optional.bool
+		},
+
+		objectStorageSetPublicRead: {
+			validator: $.optional.bool
+		},
+
+		objectStorageS3ForcePathStyle: {
+			validator: $.optional.bool
+		},
 	}
 };
 
@@ -440,6 +489,14 @@ export default define(meta, async (ps, me) => {
 		set.iconUrl = ps.iconUrl;
 	}
 
+	if (ps.backgroundImageUrl !== undefined) {
+		set.backgroundImageUrl = ps.backgroundImageUrl;
+	}
+
+	if (ps.logoImageUrl !== undefined) {
+		set.logoImageUrl = ps.logoImageUrl;
+	}
+
 	if (ps.name !== undefined) {
 		set.name = ps.name;
 	}
@@ -468,6 +525,18 @@ export default define(meta, async (ps, me) => {
 		set.proxyRemoteFiles = ps.proxyRemoteFiles;
 	}
 
+	if (ps.enableHcaptcha !== undefined) {
+		set.enableHcaptcha = ps.enableHcaptcha;
+	}
+
+	if (ps.hcaptchaSiteKey !== undefined) {
+		set.hcaptchaSiteKey = ps.hcaptchaSiteKey;
+	}
+
+	if (ps.hcaptchaSecretKey !== undefined) {
+		set.hcaptchaSecretKey = ps.hcaptchaSecretKey;
+	}
+
 	if (ps.enableRecaptcha !== undefined) {
 		set.enableRecaptcha = ps.enableRecaptcha;
 	}
@@ -494,6 +563,14 @@ export default define(meta, async (ps, me) => {
 
 	if (Array.isArray(ps.langs)) {
 		set.langs = ps.langs.filter(Boolean);
+	}
+
+	if (Array.isArray(ps.pinnedPages)) {
+		set.pinnedPages = ps.pinnedPages.filter(Boolean);
+	}
+
+	if (ps.pinnedClipId !== undefined) {
+		set.pinnedClipId = ps.pinnedClipId;
 	}
 
 	if (ps.summalyProxy !== undefined) {
@@ -630,6 +707,18 @@ export default define(meta, async (ps, me) => {
 
 	if (ps.objectStorageUseSSL !== undefined) {
 		set.objectStorageUseSSL = ps.objectStorageUseSSL;
+	}
+
+	if (ps.objectStorageUseProxy !== undefined) {
+		set.objectStorageUseProxy = ps.objectStorageUseProxy;
+	}
+
+	if (ps.objectStorageSetPublicRead !== undefined) {
+		set.objectStorageSetPublicRead = ps.objectStorageSetPublicRead;
+	}
+
+	if (ps.objectStorageS3ForcePathStyle !== undefined) {
+		set.objectStorageS3ForcePathStyle = ps.objectStorageS3ForcePathStyle;
 	}
 
 	await getConnection().transaction(async transactionalEntityManager => {
